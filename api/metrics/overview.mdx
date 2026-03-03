@@ -1,0 +1,170 @@
+---
+title: Metrics API Overview
+description: Overview of LangCheck's metrics API structure and how to import metrics
+---
+
+## Overview
+
+LangCheck provides comprehensive metrics for evaluating LLM outputs across multiple languages and dimensions. All metrics return a `MetricValue` object that contains scores, explanations, and metadata.
+
+## Import Structure
+
+Metrics can be imported in two ways:
+
+### Top-Level Import
+
+For commonly used metrics, import directly from `langcheck.metrics`:
+
+```python
+from langcheck.metrics import (
+    fluency,
+    toxicity,
+    sentiment,
+    answer_relevance,
+    factual_consistency,
+    MetricValue
+)
+
+# Evaluate model outputs
+result = fluency(["This is a well written sentence."])
+print(result.metric_values)  # [0.95]
+```
+
+### Language-Specific Import
+
+For language-specific metrics, use the language module:
+
+```python
+# English metrics
+from langcheck.metrics import en
+
+result = en.toxicity(["This is a friendly message."])
+
+# Japanese metrics
+from langcheck.metrics import ja
+
+result = ja.fluency(["これは日本語の文章です。"])
+
+# German metrics
+from langcheck.metrics import de
+
+result = de.sentiment(["Das ist ein guter Tag."])
+
+# Chinese metrics
+from langcheck.metrics import zh
+
+result = zh.sentiment(["这是一个好句子。"])
+```
+
+## Metric Categories
+
+LangCheck metrics are organized into several categories:
+
+### Reference-Free Metrics
+
+Evaluate outputs without requiring reference text:
+- **fluency**: How fluent/grammatical is the text?
+- **toxicity**: Does the text contain toxic content?
+- **sentiment**: What is the sentiment (positive/negative)?
+- **ai_disclaimer_similarity**: Does the output contain AI disclaimer language?
+- **flesch_reading_ease**: How readable is the text?
+- **jailbreak_prompt**: Does the prompt attempt a jailbreak?
+- **prompt_leakage**: Does the output leak the system prompt?
+
+### Reference-Based Metrics
+
+Compare outputs against reference text:
+- **semantic_similarity**: How semantically similar are two texts?
+- **rouge1**, **rouge2**, **rougeL**: ROUGE overlap metrics
+- **answer_correctness**: Is the answer correct compared to reference?
+- **exact_match**: Do the texts match exactly?
+
+### Source-Based Metrics
+
+Evaluate outputs against source documents:
+- **context_relevance**: Is the context relevant to the query?
+- **factual_consistency**: Is the output factually consistent with sources?
+
+### Query-Based Metrics
+
+Evaluate outputs in context of the original prompt:
+- **answer_relevance**: Is the answer relevant to the question?
+- **answer_safety**: Is the answer safe?
+- **summarization_quality**: How good is the summary?
+- **system_prompt_adherence**: Does output follow system instructions?
+- **harmful_activity**: Does content describe harmful activities?
+- **hate_speech**: Does content contain hate speech?
+- **personal_data_leakage**: Does output leak personal data?
+- **user_frustration**: Does the conversation indicate user frustration?
+- **adult_content**: Does content contain adult themes?
+
+### Pairwise Metrics
+
+Compare two model outputs:
+- **pairwise_comparison**: Compare which output is better
+
+### Text Structure Metrics
+
+Validate output format and structure:
+- **is_int**, **is_float**: Check numeric format
+- **is_json_object**, **is_json_array**: Validate JSON structure
+- **matches_regex**, **contains_regex**: Pattern matching
+- **contains_all_strings**, **contains_any_strings**: String checking
+- **validation_fn**: Custom validation function
+
+## Evaluation Models
+
+Many metrics support different evaluation backends:
+
+```python
+from langcheck.metrics import fluency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# Use local model (default)
+result = fluency(["Text to evaluate"], eval_model="local")
+
+# Use OpenAI model
+eval_client = OpenAIEvalClient(model_name="gpt-4")
+result = fluency(["Text to evaluate"], eval_model=eval_client)
+```
+
+Supported eval clients:
+- `OpenAIEvalClient` - OpenAI models
+- `AzureOpenAIEvalClient` - Azure OpenAI
+- `AnthropicEvalClient` - Anthropic Claude
+- `GeminiEvalClient` - Google Gemini
+- `LiteLLMEvalClient` - LiteLLM proxy
+- `OpenRouterEvalClient` - OpenRouter
+- `LlamaEvalClient` - Llama models
+- `PrometheusEvalClient` - Prometheus models
+
+## MetricValue Object
+
+All metrics return a `MetricValue` object with:
+
+- `metric_values`: List of scores for each input
+- `metric_name`: Name of the metric
+- `explanations`: Optional explanations for scores
+- `metric_inputs`: The inputs that were evaluated
+- `language`: Language of evaluation
+- `token_usage`: Token usage information (for LLM-based metrics)
+
+See [MetricValue API](/api/metrics/metric-value) for full details.
+
+## Custom Metrics
+
+Create custom evaluation metrics using:
+
+- `custom_evaluator()`: Define custom scoring criteria
+- `custom_pairwise_evaluator()`: Define custom pairwise comparison
+
+See [Custom Metrics API](/api/metrics/custom) for details.
+
+## Next Steps
+
+- [English Metrics](/api/metrics/english) - Complete English metrics reference
+- [Japanese Metrics](/api/metrics/japanese) - Japanese metrics reference  
+- [German Metrics](/api/metrics/german) - German metrics reference
+- [Chinese Metrics](/api/metrics/chinese) - Chinese metrics reference
+- [Custom Metrics](/api/metrics/custom) - Create custom evaluators
+- [MetricValue](/api/metrics/metric-value) - MetricValue class reference

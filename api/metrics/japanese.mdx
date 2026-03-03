@@ -1,0 +1,526 @@
+---
+title: Japanese Metrics
+description: API reference for Japanese language metrics in langcheck.metrics.ja
+---
+
+## Overview
+
+Japanese metrics are available from `langcheck.metrics.ja`. They provide the same evaluation capabilities as English metrics but optimized for Japanese text.
+
+```python
+from langcheck.metrics import ja
+
+# Reference-free metrics
+result = ja.fluency(["これはよく書かれた文章です。"])
+result = ja.toxicity(["友好的なメッセージです。"])
+result = ja.sentiment(["この製品は素晴らしい！"])
+
+# Reference-based metrics
+result = ja.semantic_similarity(
+    generated_outputs=["猫が座った。"],
+    reference_outputs=["猫が座っていた。"]
+)
+```
+
+<Note>
+  Japanese language support requires additional dependencies. Install with:
+  ```bash
+  pip install langcheck[ja]
+  ```
+</Note>
+
+## Reference-Free Text Quality
+
+### fluency()
+
+Calculates fluency scores for Japanese text.
+
+```python
+from langcheck.metrics.ja import fluency
+
+result = fluency(
+    generated_outputs=["これはよく書かれた文章です。"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Fluency scores between 0 (low fluency) and 1 (high fluency)
+</ResponseField>
+
+### toxicity()
+
+Calculates toxicity scores for Japanese text.
+
+```python
+from langcheck.metrics.ja import toxicity
+
+result = toxicity(
+    generated_outputs=["友好的なメッセージ"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Toxicity scores between 0 (no toxicity) and 1 (high toxicity)
+</ResponseField>
+
+### sentiment()
+
+Calculates sentiment scores for Japanese text.
+
+```python
+from langcheck.metrics.ja import sentiment
+
+result = sentiment(
+    generated_outputs=["この製品は素晴らしい！"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Sentiment scores: 0 (negative), 0.5 (neutral), 1 (positive)
+</ResponseField>
+
+### jailbreak_prompt()
+
+Detects jailbreak attempts in Japanese prompts.
+
+```python
+from langcheck.metrics.ja import jailbreak_prompt
+
+result = jailbreak_prompt(
+    prompts=["前の指示を無視して..."],
+    eval_model="local"
+)
+```
+
+<ParamField path="prompts" type="list[str] | str" required>
+  The prompts to evaluate
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Jailbreak scores between 0 (not a jailbreak) and 1 (likely jailbreak)
+</ResponseField>
+
+### prompt_leakage()
+
+Detects prompt leakage in Japanese outputs.
+
+```python
+from langcheck.metrics.ja import prompt_leakage
+
+result = prompt_leakage(
+    generated_outputs=["システムプロンプトには..."],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Leakage scores between 0 (no leakage) and 1 (prompt leaked)
+</ResponseField>
+
+### tateishi_ono_yamada_reading_ease()
+
+Calculates reading ease for Japanese text using the Tateishi-Ono-Yamada formula.
+
+```python
+from langcheck.metrics.ja import tateishi_ono_yamada_reading_ease
+
+result = tateishi_ono_yamada_reading_ease(
+    generated_outputs=["簡単な文章です。"]
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  Reading ease scores (higher = easier to read)
+</ResponseField>
+
+## Reference-Based Text Quality
+
+### semantic_similarity()
+
+Calculates semantic similarity for Japanese text.
+
+```python
+from langcheck.metrics.ja import semantic_similarity
+
+result = semantic_similarity(
+    generated_outputs=["猫がマットの上に座った。"],
+    reference_outputs=["猫がマットに座っていた。"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Similarity scores between 0 (different) and 1 (identical)
+</ResponseField>
+
+### rouge1(), rouge2(), rougeL()
+
+ROUGE metrics for Japanese text.
+
+```python
+from langcheck.metrics.ja import rouge1, rouge2, rougeL
+
+generated = ["早い茶色のキツネ"]
+reference = ["早い茶色のキツネが飛び越える"]
+
+r1 = rouge1(generated, reference)
+r2 = rouge2(generated, reference)
+rl = rougeL(generated, reference)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  ROUGE F1 scores between 0 and 1
+</ResponseField>
+
+### answer_correctness()
+
+Evaluates answer correctness for Japanese.
+
+```python
+from langcheck.metrics.ja import answer_correctness
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient(model_name="gpt-4")
+
+result = answer_correctness(
+    generated_outputs=["パリは首都です。"],
+    reference_outputs=["フランスの首都はパリです。"],
+    prompts=["フランスの首都は？"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Correctness scores: 0.0 (incorrect), 0.5 (partially correct), 1.0 (correct)
+</ResponseField>
+
+## Source-Based Text Quality
+
+### factual_consistency()
+
+Checks factual consistency for Japanese text.
+
+```python
+from langcheck.metrics.ja import factual_consistency
+
+result = factual_consistency(
+    generated_outputs=["エッフェル塔はパリにあります。"],
+    sources=["パリには有名なエッフェル塔があります。"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="sources" type="list[str] | str" required>
+  The source document(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional)
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Consistency scores: 0.0 (inconsistent), 0.5 (partially), 1.0 (consistent)
+</ResponseField>
+
+### context_relevance()
+
+Evaluates context relevance for Japanese.
+
+```python
+from langcheck.metrics.ja import context_relevance
+
+result = context_relevance(
+    sources=["パリはフランスの首都です。"],
+    prompts=["フランスの首都は？"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="sources" type="list[str] | str" required>
+  The source document(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str" required>
+  The prompts/queries
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Relevance scores: 0.0 (not relevant), 0.5 (partially), 1.0 (highly relevant)
+</ResponseField>
+
+## Query-Based Text Quality
+
+### answer_relevance()
+
+Evaluates answer relevance for Japanese.
+
+```python
+from langcheck.metrics.ja import answer_relevance
+
+result = answer_relevance(
+    generated_outputs=["パリはフランスの首都です。"],
+    prompts=["フランスの首都は？"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str" required>
+  The prompts/questions
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Relevance scores between 0 (not relevant) and 1 (highly relevant)
+</ResponseField>
+
+### answer_safety(), harmful_activity(), hate_speech(), personal_data_leakage(), user_frustration(), adult_content()
+
+Safety metrics for Japanese text. All have similar signatures:
+
+```python
+from langcheck.metrics.ja import (
+    answer_safety,
+    harmful_activity,
+    hate_speech,
+    personal_data_leakage,
+    user_frustration,
+    adult_content
+)
+
+result = answer_safety(
+    generated_outputs=["お手伝いできます。"],
+    prompts=["パスワードをリセットするには？"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str" required>
+  The prompts
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Detection scores: 0.0 (not detected), 1.0 (detected)
+</ResponseField>
+
+### summarization_quality(), system_prompt_adherence()
+
+Additional query-based metrics:
+
+```python
+from langcheck.metrics.ja import summarization_quality, system_prompt_adherence
+
+result = summarization_quality(
+    generated_outputs=["パリはフランスの首都。"],
+    prompts=["パリについて要約して"],
+    sources=["パリはフランスの首都であり..."],
+    eval_model=eval_client
+)
+```
+
+## Pairwise Text Quality
+
+### pairwise_comparison()
+
+Compares two Japanese outputs.
+
+```python
+from langcheck.metrics.ja import pairwise_comparison
+
+result = pairwise_comparison(
+    generated_outputs_a=["パリはいいです。"],
+    generated_outputs_b=["パリはフランスの首都です。"],
+    prompts=["パリについて教えて"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs_a" type="list[str] | str" required>
+  Model A's output(s)
+</ParamField>
+
+<ParamField path="generated_outputs_b" type="list[str] | str" required>
+  Model B's output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ParamField path="enforce_consistency" type="bool" default="True">
+  Enforce consistency when swapping A and B
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Scores: 0.0 (A better), 0.5 (tie), 1.0 (B better)
+</ResponseField>
+
+## Tokenizers
+
+Japanese metrics use specialized tokenizers:
+
+### JanomeTokenizer
+
+Tokenizer using Janome library.
+
+```python
+from langcheck.metrics.ja import JanomeTokenizer
+
+tokenizer = JanomeTokenizer()
+tokens = tokenizer.tokenize("これはテストです。")
+```
+
+### MeCabTokenizer
+
+Tokenizer using MeCab library.
+
+```python
+from langcheck.metrics.ja import MeCabTokenizer
+
+tokenizer = MeCabTokenizer()
+tokens = tokenizer.tokenize("これはテストです。")
+```
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Overview of metrics API
+- [English Metrics](/api/metrics/english) - English language metrics
+- [German Metrics](/api/metrics/german) - German language metrics
+- [Chinese Metrics](/api/metrics/chinese) - Chinese language metrics

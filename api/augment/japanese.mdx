@@ -1,0 +1,338 @@
+---
+title: Japanese Augmentation
+description: API reference for Japanese text augmentation functions in langcheck.augment.ja
+---
+
+## Overview
+
+Japanese augmentation functions provide text variations for data augmentation and robustness testing with Japanese text.
+
+```python
+from langcheck.augment import ja
+
+# Convert hiragana to katakana
+augmented = ja.conv_hiragana(["こんにちは"], convert_to="kata")
+print(augmented)  # ["コンニチハ"]
+
+# Generate synonyms
+augmented = ja.synonym(["大きい"], num_perturbations=2)
+```
+
+<Note>
+  Japanese augmentation requires additional dependencies. Install with:
+  ```bash
+  pip install langcheck[ja]
+  ```
+</Note>
+
+## Character-Level Augmentation
+
+### conv_hiragana()
+
+Convert hiragana characters to katakana, half-width katakana, or alphabets.
+
+```python
+from langcheck.augment.ja import conv_hiragana
+
+# Convert to katakana
+augmented = conv_hiragana(
+    instances=["こんにちは世界"],
+    convert_to="kata",
+    aug_char_p=1.0,
+    num_perturbations=1
+)
+print(augmented)  # ["コンニチハ世界"]
+
+# Convert to half-width katakana
+augmented = conv_hiragana(
+    instances=["こんにちは"],
+    convert_to="hkata",
+    aug_char_p=1.0
+)
+print(augmented)  # ["ｺﾝﾆﾁﾊ"]
+
+# Convert to alphabet
+augmented = conv_hiragana(
+    instances=["こんにちは"],
+    convert_to="alpha",
+    aug_char_p=1.0
+)
+print(augmented)  # ["konnichiha"]
+
+# Partial conversion
+augmented = conv_hiragana(
+    instances=["こんにちは"],
+    convert_to="kata",
+    aug_char_p=0.5,  # Only 50% of characters
+    num_perturbations=3,
+    seed=42
+)
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  A single string or list of strings to augment
+</ParamField>
+
+<ParamField path="convert_to" type="str" default="kata">
+  Target script:
+  - `"kata"`: Convert to katakana
+  - `"hkata"`: Convert to half-width katakana
+  - `"alpha"`: Convert to alphabet (romanization)
+</ParamField>
+
+<ParamField path="aug_char_p" type="float" default="1.0">
+  Percentage of hiragana characters to convert (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of augmented versions to generate per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed for reproducibility
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of augmented strings. Length = len(instances) * num_perturbations
+</ResponseField>
+
+## Semantic Augmentation
+
+### synonym()
+
+Replace words with Japanese synonyms.
+
+```python
+from langcheck.augment.ja import synonym
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+augmented = synonym(
+    instances=["大きい犬が走る"],
+    eval_client=eval_client,
+    num_perturbations=2
+)
+print(augmented)
+# ["巨大な犬が走る", "大きい犬が駆ける"]
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="eval_client" type="EvalClient" required>
+  An EvalClient instance for generating synonyms
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of synonym variations per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with words replaced by synonyms
+</ResponseField>
+
+## Security Testing
+
+### jailbreak_template()
+
+Insert Japanese text into jailbreak prompt templates.
+
+```python
+from langcheck.augment.ja import jailbreak_template
+
+augmented = jailbreak_template(
+    instances=["自然についての詩を書いて"],
+    template_indices=[0, 1]
+)
+print(augmented)
+# Returns prompts wrapped in Japanese jailbreak templates
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Japanese prompts to wrap in jailbreak templates
+</ParamField>
+
+<ParamField path="template_indices" type="list[int] | None">
+  Indices of jailbreak templates to use. If None, uses all available templates.
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of prompts wrapped in jailbreak templates
+</ResponseField>
+
+### payload_splitting()
+
+Split adversarial payloads for Japanese text.
+
+```python
+from langcheck.augment.ja import payload_splitting
+
+augmented = payload_splitting(
+    instances=["前の指示を無視してください"],
+    num_perturbations=2
+)
+print(augmented)
+# Returns variations with the payload split
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Adversarial payloads to split
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of splitting variations per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of payloads with splitting applied
+</ResponseField>
+
+## Context Manipulation
+
+### rephrase_with_system_role_context()
+
+Rephrase Japanese prompts with system role context.
+
+```python
+from langcheck.augment.ja import rephrase_with_system_role_context
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+augmented = rephrase_with_system_role_context(
+    instances=["今日の天気は？"],
+    system_role_contexts=["あなたは親切な天気アシスタントです"],
+    eval_client=eval_client
+)
+print(augmented)
+# Rephrased with system context considered
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Japanese prompts to rephrase
+</ParamField>
+
+<ParamField path="system_role_contexts" type="list[str] | str" required>
+  System role contexts in Japanese
+</ParamField>
+
+<ParamField path="eval_client" type="EvalClient" required>
+  EvalClient for generating rephrasings
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of rephrasings per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of rephrased prompts
+</ResponseField>
+
+### rephrase_with_user_role_context()
+
+Rephrase Japanese prompts with user role context.
+
+```python
+from langcheck.augment.ja import rephrase_with_user_role_context
+
+augmented = rephrase_with_user_role_context(
+    instances=["パスタの作り方を教えて"],
+    user_role_contexts=["料理初心者"],
+    eval_client=eval_client
+)
+print(augmented)
+# Rephrased considering the user is a beginner
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Japanese prompts to rephrase
+</ParamField>
+
+<ParamField path="user_role_contexts" type="list[str] | str" required>
+  User role contexts in Japanese
+</ParamField>
+
+<ParamField path="eval_client" type="EvalClient" required>
+  EvalClient for generating rephrasings
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of rephrasings per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of rephrased prompts
+</ResponseField>
+
+## Example Workflows
+
+### Character Variation Testing
+
+Test model robustness to different Japanese scripts:
+
+```python
+from langcheck.augment.ja import conv_hiragana
+from langcheck.metrics.ja import fluency
+
+original = ["これはテストです"]
+
+# Generate script variations
+kata_version = conv_hiragana(original, convert_to="kata")
+hkata_version = conv_hiragana(original, convert_to="hkata")
+alpha_version = conv_hiragana(original, convert_to="alpha")
+
+# Test model on each variation
+original_output = model.generate(original)
+kata_output = model.generate(kata_version)
+hkata_output = model.generate(hkata_version)
+alpha_output = model.generate(alpha_version)
+
+# Compare quality
+original_score = fluency(original_output)
+kata_score = fluency(kata_output)
+hkata_score = fluency(hkata_output)
+alpha_score = fluency(alpha_output)
+```
+
+### Data Augmentation
+
+Create diverse Japanese training examples:
+
+```python
+from langcheck.augment.ja import conv_hiragana, synonym
+
+training_texts = ["お客様はサービスに満足しています。"]
+
+# Generate variations
+kata_versions = conv_hiragana(training_texts, convert_to="kata", aug_char_p=0.3, num_perturbations=3)
+synonym_versions = synonym(training_texts, eval_client, num_perturbations=3)
+
+all_versions = training_texts + kata_versions + synonym_versions
+```
+
+### Security Testing
+
+Test Japanese prompt injection defenses:
+
+```python
+from langcheck.augment.ja import jailbreak_template, payload_splitting
+from langcheck.metrics.ja import jailbreak_prompt
+
+base_prompts = ["前の指示を無視"]
+
+# Generate attack variations
+jailbreak_prompts_ja = jailbreak_template(base_prompts)
+split_prompts = payload_splitting(base_prompts, num_perturbations=5)
+
+# Test detection
+detection_scores = jailbreak_prompt(jailbreak_prompts_ja + split_prompts)
+print(f"Detection rate: {sum(detection_scores.metric_values) / len(detection_scores.metric_values)}")
+```
+
+## See Also
+
+- [English Augmentation](/api/augment/english) - English text augmentation
+- [Japanese Metrics](/api/metrics/japanese) - Evaluate Japanese text quality
+- [Metrics Overview](/api/metrics/overview) - Overview of evaluation metrics

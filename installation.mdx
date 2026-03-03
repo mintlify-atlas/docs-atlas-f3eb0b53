@@ -1,0 +1,208 @@
+---
+title: Installation
+description: Install LangCheck with support for different languages and LLM providers
+---
+
+# Installation
+
+## Requirements
+
+LangCheck requires **Python 3.10 or higher**.
+
+## Basic Installation
+
+<Steps>
+  <Step title="Install for English only">
+    The default installation includes English metrics only:
+    
+    ```bash
+    pip install langcheck
+    ```
+  </Step>
+  
+  <Step title="Install with language support">
+    To add support for additional languages:
+    
+    <CodeGroup>
+      ```bash Japanese
+      pip install langcheck[ja]
+      ```
+      
+      ```bash Chinese
+      pip install langcheck[zh]
+      ```
+      
+      ```bash German
+      pip install langcheck[de]
+      ```
+      
+      ```bash All Languages
+      # Requires pip 21.2+
+      pip install --upgrade pip
+      pip install langcheck[all]
+      ```
+      
+      ```bash Multiple Languages
+      pip install langcheck[ja,zh,de]
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+<Note>
+  Model files are lazily downloaded the first time you run a metric function. For example, the first time you run `langcheck.metrics.sentiment()`, LangCheck will automatically download the Twitter-roBERTa-base model.
+</Note>
+
+## Optional Dependencies
+
+LangCheck supports optional dependencies for different LLM providers and use cases:
+
+<Tabs>
+  <Tab title="Anthropic">
+    ```bash
+    pip install langcheck[anthropic]
+    ```
+    Adds support for Anthropic's Claude models.
+  </Tab>
+  
+  <Tab title="Google Gemini">
+    ```bash
+    pip install langcheck[gemini]
+    ```
+    Adds support for Google's Gemini models.
+  </Tab>
+  
+  <Tab title="Local LLM (vLLM)">
+    ```bash
+    pip install langcheck[local-llm]
+    ```
+    Adds support for running local LLMs with vLLM.
+    
+    <Warning>
+      The `vllm` package does not have pre-built wheels for ARM devices. ARM users should use `langcheck[no-local-llm]` instead.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Japanese (Optional)">
+    ```bash
+    pip install langcheck[ja-optional]
+    ```
+    Extended Japanese support with MeCab and SudachiPy tokenizers.
+  </Tab>
+</Tabs>
+
+## Installation Options
+
+<AccordionGroup>
+  <Accordion title="All dependencies (including vLLM)">
+    ```bash
+    pip install langcheck[all]
+    ```
+    Installs all language support and all optional LLM provider dependencies.
+  </Accordion>
+  
+  <Accordion title="All dependencies except vLLM">
+    ```bash
+    pip install langcheck[no-local-llm]
+    ```
+    Recommended for ARM users or when you don't need local LLM support.
+  </Accordion>
+</AccordionGroup>
+
+## Installation FAQ
+
+Having installation issues? Check these common problems and solutions:
+
+<AccordionGroup>
+  <Accordion title="Installing LangCheck with Python 3.12">
+    As of February 2024, one of LangCheck's Japanese dependencies, `fugashi`, doesn't provide wheels for Python 3.12, so you'll need to first install MeCab.
+    
+    **Linux (Debian/Ubuntu)**
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y mecab libmecab-dev mecab-ipadic-utf8
+    ```
+    
+    **macOS**
+    ```bash
+    brew install mecab
+    ```
+    
+    **Windows**
+    
+    Install MeCab with [the official installer](https://taku910.github.io/mecab/#install).
+  </Accordion>
+  
+  <Accordion title="Error: command 'gcc' failed">
+    One of LangCheck's Japanese dependencies, `dartsclone`, doesn't provide wheels for Python 3.10+. You'll need to have `gcc` installed.
+    
+    Most systems already have `gcc` installed, with the exception of "slim" Docker images like `python:3.11-slim-buster`.
+    
+    **Solution 1:** Use the non-slim Docker image
+    ```dockerfile
+    FROM python:3.11-buster
+    ```
+    
+    **Solution 2:** Install build tools in your slim image
+    ```bash
+    apt update && apt install build-essential -y
+    ```
+  </Accordion>
+  
+  <Accordion title="Error: Failed to build sudachipy">
+    The `sudachipy` package (installed with `langcheck[all]` or `langcheck[ja-optional]`) does not have a pre-built wheel for ARM64 Linux devices. You need a Rust compiler.
+    
+    **Install Rust:**
+    
+    Follow the [official Rust documentation](https://www.rust-lang.org/tools/install) to install Rust before installing LangCheck.
+    
+    **Alternative:**
+    
+    If you don't need the `[ja-optional]` dependencies:
+    ```bash
+    pip install langcheck[en,ja,de,zh]
+    ```
+  </Accordion>
+  
+  <Accordion title="Error: Failed to build vllm">
+    The `vllm` package does not have a pre-built wheel for ARM devices.
+    
+    **Solution:**
+    ```bash
+    pip install langcheck[no-local-llm]
+    ```
+    This installs all dependencies except vLLM.
+  </Accordion>
+  
+  <Accordion title="Error: module 'langcheck.metrics' has no attribute 'ja'">
+    You need to install the language-specific package.
+    
+    ```bash
+    pip install langcheck[ja]
+    ```
+    
+    Replace `[ja]` with your required language: `[zh]`, `[de]`, etc.
+  </Accordion>
+  
+  <Accordion title="Error: ModuleNotFoundError when importing langcheck.metrics.ja">
+    Same as above - you need to install the language-specific package:
+    
+    ```bash
+    pip install langcheck[ja]
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  If you have any problems installing LangCheck not covered here, please [open an issue on GitHub](https://github.com/citadel-ai/langcheck/issues).
+</Note>
+
+## Installing from Source
+
+To install LangCheck from source for development purposes, see the [Contributing guide](https://langcheck.readthedocs.io/en/latest/contributing.html).
+
+## Next Steps
+
+<Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+  Start using LangCheck with practical examples
+</Card>

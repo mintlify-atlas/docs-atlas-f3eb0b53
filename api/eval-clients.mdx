@@ -1,0 +1,572 @@
+---
+title: Eval Clients
+description: API reference for EvalClient classes used to evaluate metrics with different LLM providers
+---
+
+## Overview
+
+EvalClients are the interface between LangCheck metrics and LLM providers. They allow you to use different language models (OpenAI, Anthropic, Google Gemini, etc.) as evaluators for your metrics.
+
+```python
+from langcheck.metrics.eval_clients import OpenAIEvalClient, AnthropicEvalClient
+from langcheck.metrics import fluency, answer_relevance
+
+# Use OpenAI for evaluation
+openai_client = OpenAIEvalClient(model_name="gpt-4")
+result = fluency(["Well written text"], eval_model=openai_client)
+
+# Use Anthropic for evaluation  
+anthropic_client = AnthropicEvalClient(model_name="claude-3-opus-20240229")
+result = answer_relevance(
+    generated_outputs=["Paris is the capital."],
+    prompts=["What is the capital of France?"],
+    eval_model=anthropic_client
+)
+```
+
+## Base Class
+
+### EvalClient
+
+Abstract base class for all eval clients. You typically don't instantiate this directly, but use one of the concrete implementations below.
+
+```python
+from langcheck.metrics.eval_clients import EvalClient
+
+# All eval clients inherit from this base class
+class CustomEvalClient(EvalClient):
+    # Implement required methods
+    pass
+```
+
+## OpenAI
+
+### OpenAIEvalClient
+
+Eval client for OpenAI models (GPT-4, GPT-3.5, etc.).
+
+```python
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+from langcheck.metrics import fluency, toxicity
+
+# Initialize with GPT-4
+eval_client = OpenAIEvalClient(
+    model_name="gpt-4",
+    temperature=0.0,
+    api_key="sk-..."  # Optional, uses OPENAI_API_KEY env var by default
+)
+
+# Use for evaluation
+result = fluency(
+    generated_outputs=["This is a well-written sentence."],
+    eval_model=eval_client
+)
+
+# Also works with other metrics
+result = toxicity(
+    generated_outputs=["Friendly message here."],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="model_name" type="str" default="gpt-4o-mini">
+  OpenAI model to use:
+  - `"gpt-4"`, `"gpt-4-turbo"`, `"gpt-4o"`, `"gpt-4o-mini"`
+  - `"gpt-3.5-turbo"`, `"gpt-3.5-turbo-16k"`
+  - Any other OpenAI model identifier
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature (0.0 to 2.0). Lower values make output more deterministic.
+</ParamField>
+
+<ParamField path="api_key" type="str | None">
+  OpenAI API key. If not provided, uses the `OPENAI_API_KEY` environment variable.
+</ParamField>
+
+<ParamField path="max_tokens" type="int | None">
+  Maximum tokens in the response. If not set, uses model defaults.
+</ParamField>
+
+### AzureOpenAIEvalClient
+
+Eval client for Azure OpenAI Service.
+
+```python
+from langcheck.metrics.eval_clients import AzureOpenAIEvalClient
+
+eval_client = AzureOpenAIEvalClient(
+    deployment_name="gpt-4-deployment",
+    azure_endpoint="https://your-resource.openai.azure.com/",
+    api_version="2024-02-15-preview",
+    api_key="your-azure-api-key",  # Or use AZURE_OPENAI_API_KEY env var
+    temperature=0.0
+)
+
+result = fluency(outputs, eval_model=eval_client)
+```
+
+<ParamField path="deployment_name" type="str" required>
+  Name of your Azure OpenAI deployment
+</ParamField>
+
+<ParamField path="azure_endpoint" type="str" required>
+  Your Azure OpenAI endpoint URL
+</ParamField>
+
+<ParamField path="api_version" type="str" default="2024-02-15-preview">
+  Azure OpenAI API version
+</ParamField>
+
+<ParamField path="api_key" type="str | None">
+  Azure API key. If not provided, uses `AZURE_OPENAI_API_KEY` environment variable.
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature
+</ParamField>
+
+### OpenAIExtractor
+
+Extractor client for structured data extraction using OpenAI.
+
+```python
+from langcheck.metrics.eval_clients import OpenAIExtractor
+
+extractor = OpenAIExtractor(
+    model_name="gpt-4",
+    temperature=0.0
+)
+
+# Used internally by LangCheck for structured extraction tasks
+```
+
+## Anthropic
+
+### AnthropicEvalClient
+
+Eval client for Anthropic Claude models.
+
+```python
+from langcheck.metrics.eval_clients import AnthropicEvalClient
+from langcheck.metrics import answer_relevance
+
+eval_client = AnthropicEvalClient(
+    model_name="claude-3-opus-20240229",
+    temperature=0.0,
+    api_key="sk-ant-..."  # Or use ANTHROPIC_API_KEY env var
+)
+
+result = answer_relevance(
+    generated_outputs=["Paris is the capital of France."],
+    prompts=["What is the capital of France?"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="model_name" type="str" default="claude-3-5-sonnet-20241022">
+  Anthropic model to use:
+  - `"claude-3-opus-20240229"` (most capable)
+  - `"claude-3-5-sonnet-20241022"` (balanced)
+  - `"claude-3-haiku-20240307"` (fast)
+  - `"claude-3-5-haiku-20241022"` (fastest)
+  - Any other Claude model identifier
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="api_key" type="str | None">
+  Anthropic API key. If not provided, uses `ANTHROPIC_API_KEY` environment variable.
+</ParamField>
+
+<ParamField path="max_tokens" type="int" default="1024">
+  Maximum tokens in the response
+</ParamField>
+
+<Note>
+  AnthropicEvalClient requires the `anthropic` package:
+  ```bash
+  pip install anthropic
+  ```
+</Note>
+
+### AnthropicExtractor
+
+Extractor client for structured data extraction using Claude.
+
+```python
+from langcheck.metrics.eval_clients import AnthropicExtractor
+
+extractor = AnthropicExtractor(
+    model_name="claude-3-opus-20240229",
+    temperature=0.0
+)
+```
+
+## Google
+
+### GeminiEvalClient
+
+Eval client for Google Gemini models.
+
+```python
+from langcheck.metrics.eval_clients import GeminiEvalClient
+from langcheck.metrics import sentiment
+
+eval_client = GeminiEvalClient(
+    model_name="gemini-1.5-pro",
+    temperature=0.0,
+    api_key="your-api-key"  # Or use GOOGLE_API_KEY env var
+)
+
+result = sentiment(
+    generated_outputs=["I love this product!"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="model_name" type="str" default="gemini-1.5-flash">
+  Gemini model to use:
+  - `"gemini-1.5-pro"` (most capable)
+  - `"gemini-1.5-flash"` (fast)
+  - `"gemini-1.0-pro"` (earlier version)
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature
+</ParamField>
+
+<ParamField path="api_key" type="str | None">
+  Google API key. If not provided, uses `GOOGLE_API_KEY` environment variable.
+</ParamField>
+
+<Note>
+  GeminiEvalClient requires the `google-generativeai` package:
+  ```bash
+  pip install google-generativeai
+  ```
+</Note>
+
+### GeminiExtractor
+
+Extractor client for structured extraction using Gemini.
+
+```python
+from langcheck.metrics.eval_clients import GeminiExtractor
+
+extractor = GeminiExtractor(
+    model_name="gemini-1.5-pro",
+    temperature=0.0
+)
+```
+
+## LiteLLM
+
+### LiteLLMEvalClient
+
+Eval client that uses LiteLLM to access 100+ LLM providers with a unified interface.
+
+```python
+from langcheck.metrics.eval_clients import LiteLLMEvalClient
+from langcheck.metrics import fluency
+
+# Use with OpenAI (via LiteLLM)
+eval_client = LiteLLMEvalClient(
+    model_name="gpt-4",
+    temperature=0.0
+)
+
+# Use with other providers
+eval_client = LiteLLMEvalClient(
+    model_name="anthropic/claude-3-opus-20240229",
+    temperature=0.0,
+    api_key="your-api-key"
+)
+
+# Use with Hugging Face
+eval_client = LiteLLMEvalClient(
+    model_name="huggingface/meta-llama/Llama-2-7b-chat-hf",
+    api_key="your-hf-token"
+)
+
+result = fluency(outputs, eval_model=eval_client)
+```
+
+<ParamField path="model_name" type="str" required>
+  Model identifier in LiteLLM format:
+  - OpenAI: `"gpt-4"`, `"gpt-3.5-turbo"`
+  - Anthropic: `"anthropic/claude-3-opus-20240229"`
+  - Cohere: `"cohere/command-r-plus"`
+  - Hugging Face: `"huggingface/model-name"`
+  - See [LiteLLM docs](https://docs.litellm.ai/docs/providers) for full list
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature
+</ParamField>
+
+<ParamField path="api_key" type="str | None">
+  API key for the provider. Environment variable depends on provider.
+</ParamField>
+
+<ParamField path="max_tokens" type="int | None">
+  Maximum tokens in response
+</ParamField>
+
+<Note>
+  LiteLLMEvalClient requires the `litellm` package:
+  ```bash
+  pip install litellm
+  ```
+</Note>
+
+### LiteLLMExtractor
+
+Extractor client using LiteLLM.
+
+```python
+from langcheck.metrics.eval_clients import LiteLLMExtractor
+
+extractor = LiteLLMExtractor(
+    model_name="gpt-4",
+    temperature=0.0
+)
+```
+
+## OpenRouter
+
+### OpenRouterEvalClient
+
+Eval client for OpenRouter, which provides access to many models through a single API.
+
+```python
+from langcheck.metrics.eval_clients import OpenRouterEvalClient
+from langcheck.metrics import toxicity
+
+eval_client = OpenRouterEvalClient(
+    model_name="anthropic/claude-3-opus",
+    api_key="your-openrouter-key",  # Or use OPENROUTER_API_KEY env var
+    temperature=0.0
+)
+
+result = toxicity(outputs, eval_model=eval_client)
+```
+
+<ParamField path="model_name" type="str" required>
+  Model identifier in OpenRouter format:
+  - `"anthropic/claude-3-opus"`
+  - `"openai/gpt-4-turbo"`
+  - `"google/gemini-pro"`
+  - See [OpenRouter models](https://openrouter.ai/models) for full list
+</ParamField>
+
+<ParamField path="api_key" type="str | None" required>
+  OpenRouter API key. If not provided, uses `OPENROUTER_API_KEY` environment variable.
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature
+</ParamField>
+
+### OpenRouterExtractor
+
+Extractor client using OpenRouter.
+
+```python
+from langcheck.metrics.eval_clients import OpenRouterExtractor
+
+extractor = OpenRouterExtractor(
+    model_name="openai/gpt-4",
+    api_key="your-key"
+)
+```
+
+## Meta Llama
+
+### LlamaEvalClient
+
+Eval client for Meta's Llama models.
+
+```python
+from langcheck.metrics.eval_clients import LlamaEvalClient
+from langcheck.metrics import fluency
+
+eval_client = LlamaEvalClient(
+    model_name="meta-llama/Llama-2-70b-chat-hf",
+    temperature=0.0
+)
+
+result = fluency(outputs, eval_model=eval_client)
+```
+
+<ParamField path="model_name" type="str" required>
+  Llama model identifier:
+  - `"meta-llama/Llama-2-70b-chat-hf"`
+  - `"meta-llama/Llama-2-13b-chat-hf"`
+  - `"meta-llama/Llama-2-7b-chat-hf"`
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature
+</ParamField>
+
+<Note>
+  LlamaEvalClient requires the `transformers` package:
+  ```bash
+  pip install transformers torch
+  ```
+</Note>
+
+### LlamaExtractor
+
+Extractor client using Llama models.
+
+```python
+from langcheck.metrics.eval_clients import LlamaExtractor
+
+extractor = LlamaExtractor(
+    model_name="meta-llama/Llama-2-70b-chat-hf"
+)
+```
+
+## Prometheus
+
+### PrometheusEvalClient
+
+Eval client for Prometheus evaluation models.
+
+```python
+from langcheck.metrics.eval_clients import PrometheusEvalClient
+from langcheck.metrics import answer_relevance
+
+eval_client = PrometheusEvalClient(
+    model_name="prometheus-7b",
+    temperature=0.0
+)
+
+result = answer_relevance(
+    generated_outputs=outputs,
+    prompts=prompts,
+    eval_model=eval_client
+)
+```
+
+<ParamField path="model_name" type="str" required>
+  Prometheus model identifier
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.0">
+  Sampling temperature
+</ParamField>
+
+<Note>
+  PrometheusEvalClient requires the `transformers` package:
+  ```bash
+  pip install transformers torch
+  ```
+</Note>
+
+## Token Usage
+
+All EvalClients track token usage through the `MetricTokenUsage` class:
+
+```python
+from langcheck.metrics import fluency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient(model_name="gpt-4")
+
+result = fluency(
+    generated_outputs=["Text 1", "Text 2", "Text 3"],
+    eval_model=eval_client
+)
+
+# Access token usage
+if result.token_usage:
+    print(f"Input tokens: {result.token_usage.input_tokens}")
+    print(f"Output tokens: {result.token_usage.output_tokens}")
+    print(f"Total tokens: {result.token_usage.total_tokens}")
+    print(f"Cost estimate: ${result.token_usage.total_tokens * 0.00003:.4f}")  # Rough GPT-4 estimate
+```
+
+## Best Practices
+
+### Choose the Right Model
+
+```python
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# For high-stakes evaluation (more accurate but slower/expensive)
+eval_client_accurate = OpenAIEvalClient(model_name="gpt-4")
+
+# For rapid iteration (faster and cheaper)
+eval_client_fast = OpenAIEvalClient(model_name="gpt-4o-mini")
+
+# For production monitoring (balance speed and accuracy)
+eval_client_balanced = OpenAIEvalClient(model_name="gpt-4o")
+```
+
+### Set Temperature to 0 for Consistency
+
+```python
+# Deterministic evaluations (recommended for metrics)
+eval_client = OpenAIEvalClient(
+    model_name="gpt-4",
+    temperature=0.0  # Most consistent results
+)
+
+# Higher temperature for creative tasks (not recommended for metrics)
+eval_client_creative = OpenAIEvalClient(
+    model_name="gpt-4",
+    temperature=0.7  # More variation
+)
+```
+
+### Use Environment Variables for API Keys
+
+```python
+import os
+from langcheck.metrics.eval_clients import OpenAIEvalClient, AnthropicEvalClient
+
+# Set environment variables
+os.environ["OPENAI_API_KEY"] = "sk-..."
+os.environ["ANTHROPIC_API_KEY"] = "sk-ant-..."
+
+# No need to pass api_key parameter
+openai_client = OpenAIEvalClient(model_name="gpt-4")
+anthropic_client = AnthropicEvalClient(model_name="claude-3-opus-20240229")
+```
+
+### Reuse EvalClient Instances
+
+```python
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+from langcheck.metrics import fluency, toxicity, sentiment
+
+# Create once, reuse many times
+eval_client = OpenAIEvalClient(model_name="gpt-4")
+
+# Use for multiple metrics
+fluency_result = fluency(outputs, eval_model=eval_client)
+toxicity_result = toxicity(outputs, eval_model=eval_client)
+sentiment_result = sentiment(outputs, eval_model=eval_client)
+```
+
+## Comparison of Eval Clients
+
+| Client | Pros | Cons | Best For |
+|--------|------|------|----------|
+| **OpenAIEvalClient** | High quality, fast, widely available | Can be expensive | Production evaluations |
+| **AnthropicEvalClient** | Very high quality, strong reasoning | More expensive, slower | Complex evaluation tasks |
+| **GeminiEvalClient** | Fast, competitive pricing | Newer, less proven | Cost-effective evaluations |
+| **LiteLLMEvalClient** | Access to 100+ models, unified API | Extra dependency | Multi-provider workflows |
+| **OpenRouterEvalClient** | Many models, pay-per-use | Added complexity | Experimentation |
+| **LlamaEvalClient** | Open source, self-hosted | Requires infrastructure | Privacy-sensitive applications |
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Overview of metrics that use eval clients
+- [Custom Metrics](/api/metrics/custom) - Use eval clients with custom metrics
+- [English Metrics](/api/metrics/english) - Metrics that support eval clients

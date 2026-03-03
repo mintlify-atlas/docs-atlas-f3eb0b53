@@ -1,0 +1,68 @@
+---
+title: Tutorials
+description: Learn how to use LangCheck through practical tutorials and interactive notebooks
+---
+
+## Overview
+
+These tutorials demonstrate how to use LangCheck in common LLM applications. From building simple email generators to creating sophisticated RAG systems with auto-evaluation, these hands-on guides will help you understand how to evaluate and improve your LLM applications.
+
+## Interactive Notebooks
+
+We provide several Jupyter notebooks that you can run yourself to explore LangCheck's capabilities:
+
+- **[LangCheck Quickstart](https://colab.research.google.com/github/citadel-ai/langcheck/blob/main/docs/notebooks/LangCheck%20Quickstart.ipynb)** - Get started with LangCheck basics in minutes
+- **[LangCheck Quickstart - German](https://colab.research.google.com/github/citadel-ai/langcheck/blob/main/docs/notebooks/LangCheck%20Quickstart%20-%20German.ipynb)** - Learn how to use LangCheck with German language text
+- **[Email Generation Tutorial](https://colab.research.google.com/github/citadel-ai/langcheck/blob/main/docs/notebooks/Email%20Generation%20Tutorial.ipynb)** - Build and evaluate an email generator using LangCheck
+- **[Plots](https://colab.research.google.com/github/citadel-ai/langcheck/blob/main/docs/notebooks/Plots.ipynb)** - Learn how to visualize evaluation results
+
+## Featured Tutorials
+
+### Evaluating an Email Generator
+
+This tutorial walks through building a simple email generator app using the OpenAI API and evaluating its outputs with LangCheck. You'll learn how to:
+
+- Create a prompt template for email generation
+- Use reference-free metrics like toxicity, fluency, and sentiment
+- Apply source-based metrics like factual consistency to detect hallucinations
+- Leverage reference-based metrics like ROUGE-L and semantic similarity
+- Iteratively improve your prompt based on evaluation results
+
+The tutorial demonstrates how even simple prompt changes can significantly improve factual consistency scores, helping you systematically optimize your LLM applications.
+
+[View full tutorial →](https://colab.research.google.com/github/citadel-ai/langcheck/blob/main/docs/notebooks/Email%20Generation%20Tutorial.ipynb)
+
+### LangCheckChat: RAG System with Auto-Evaluation
+
+This tutorial explores how to build a Q&A system over LangCheck documentation that automatically evaluates itself. You'll discover:
+
+- What Retrieval Augmented Generation (RAG) is and why it's useful
+- How to build a RAG system using LlamaIndex
+- How to evaluate RAG responses with three categories of LangCheck metrics:
+  - Reference-free metrics (toxicity, fluency, etc.)
+  - Source-based metrics (factual consistency)
+  - Reference-based metrics (semantic similarity, ROUGE-L)
+- How to visualize evaluation results and warn users about potential hallucinations
+
+The tutorial includes a complete working app that you can run locally and customize for your own use cases.
+
+[View full tutorial →](https://github.com/citadel-ai/langcheckchat) | [Watch demo video →](https://vimeo.com/919566889)
+
+## Getting Help
+
+We're constantly updating our tutorials! If you'd like to:
+
+- **Request a tutorial** - [Open an issue on GitHub](https://github.com/citadel-ai/langcheck/issues)
+- **Ask questions** - [Join our Discord community](https://discord.com/invite/Bkndx9RXqw)
+- **Report problems** - [Open an issue on GitHub](https://github.com/citadel-ai/langcheck/issues)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Metrics Reference" icon="chart-line" href="/metrics">
+    Explore all available evaluation metrics
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Detailed API documentation
+  </Card>
+</CardGroup>

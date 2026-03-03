@@ -1,0 +1,194 @@
+---
+title: 'Source-Based Metrics'
+description: 'Metrics that evaluate outputs against source documents'
+---
+
+Source-based metrics require a "source" text to evaluate the generated outputs. Sources are input documents or context used to generate the output, such as documents retrieved in a RAG (Retrieval Augmented Generation) system.
+
+## Available Metrics
+
+### factual_consistency
+
+Calculates the factual consistency between the generated outputs and the source documents.
+
+**Scores:** Float values between [0, 1], where 0 means the output is not at all consistent with the source text, and 1 means the output is fully consistent. When using an EvalClient, scores are 0.0 (Not Consistent), 0.5 (Partially Consistent), or 1.0 (Fully Consistent).
+
+**Languages:** EN, JA, DE, ZH
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `sources` (list[str] | str): The source text(s), one string per generated output
+- `prompts` (list[str] | str | None): Optional prompts used to generate the outputs
+- `eval_model` (str | EvalClient): Evaluation model to use ('local' or EvalClient instance). Default: 'local'
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import factual_consistency
+
+sources = [
+    "The Eiffel Tower is located in Paris, France. It was completed in 1889."
+]
+generated_outputs = [
+    "The Eiffel Tower in Paris was built in 1889."
+]
+
+result = factual_consistency(generated_outputs, sources)
+print(result.metric_values)  # [0.95]
+```
+
+**Detecting hallucinations:**
+```python
+sources = [
+    "The Eiffel Tower is located in Paris, France."
+]
+generated_outputs = [
+    "The Eiffel Tower is located in London."
+]
+
+result = factual_consistency(generated_outputs, sources)
+print(result.metric_values)  # [0.15] - Low score indicates hallucination
+```
+
+**With EvalClient:**
+```python
+from langcheck.metrics import factual_consistency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+result = factual_consistency(
+    generated_outputs,
+    sources,
+    eval_model=eval_client
+)
+```
+
+### context_relevance
+
+Calculates the relevance of the source documents to the prompts. This helps evaluate whether the retrieved context is actually useful for answering the question.
+
+**Scores:** Float values between [0, 1], where 0 means the source text is not at all relevant to the prompt, and 1 means the source text is fully relevant.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `sources` (list[str] | str): The source text(s), one string per prompt
+- `prompts` (list[str] | str): The prompt(s)
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import context_relevance
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+prompts = ["What is the capital of France?"]
+sources = [
+    "Paris is the capital and most populous city of France. It has an area of 105 square kilometres."
+]
+
+result = context_relevance(sources, prompts, eval_model=eval_client)
+print(result.metric_values)  # [1.0] - Highly relevant
+```
+
+**Example with irrelevant context:**
+```python
+prompts = ["What is the capital of France?"]
+sources = [
+    "The Great Wall of China is an ancient fortification in China."
+]
+
+result = context_relevance(sources, prompts, eval_model=eval_client)
+print(result.metric_values)  # [0.0] - Not relevant
+```
+
+## Importing Metrics
+
+For English text, import directly from `langcheck.metrics`:
+
+```python
+from langcheck.metrics import factual_consistency, context_relevance
+```
+
+For other languages:
+
+```python
+# Japanese
+from langcheck.metrics.ja import factual_consistency, context_relevance
+
+# German
+from langcheck.metrics.de import factual_consistency
+
+# Chinese
+from langcheck.metrics.zh import factual_consistency
+```
+
+## Use Cases
+
+### RAG Applications
+
+Source-based metrics are essential for evaluating Retrieval Augmented Generation systems:
+
+```python
+from langcheck.metrics import factual_consistency, context_relevance
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+# Step 1: Check if retrieved documents are relevant
+relevance = context_relevance(retrieved_docs, queries, eval_model=eval_client)
+
+# Step 2: Check if generated answers are factually consistent with sources
+consistency = factual_consistency(answers, retrieved_docs)
+
+# Combine metrics for overall quality
+for i, (rel, cons) in enumerate(zip(relevance.metric_values, consistency.metric_values)):
+    print(f"Query {i}: Relevance={rel}, Consistency={cons}")
+```
+
+### Detecting Hallucinations
+
+Low factual consistency scores indicate potential hallucinations:
+
+```python
+from langcheck.metrics import factual_consistency
+
+sources = ["Company ABC reported revenue of $100M in Q1 2023."]
+outputs = ["Company ABC's Q1 2023 revenue was $200M."]
+
+result = factual_consistency(outputs, sources)
+if result.metric_values[0] < 0.5:
+    print("Warning: Potential hallucination detected!")
+```
+
+### Document Summarization
+
+Ensure summaries are faithful to source documents:
+
+```python
+sources = [long_document]
+summaries = [generated_summary]
+
+result = factual_consistency(summaries, sources)
+print(f"Summary faithfulness: {result.metric_values[0]}")
+```
+
+## Local vs Remote Evaluation
+
+The `factual_consistency` metric uses the UniEval-fact model locally by default. For better evaluation quality, especially on complex text, use a remote LLM:
+
+```python
+# Local evaluation (default)
+result = factual_consistency(outputs, sources, eval_model='local')
+
+# Remote evaluation with OpenAI
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+eval_client = OpenAIEvalClient()
+result = factual_consistency(outputs, sources, eval_model=eval_client)
+```
+
+See [Eval Clients](/metrics/eval-clients) for more details on using remote LLMs.

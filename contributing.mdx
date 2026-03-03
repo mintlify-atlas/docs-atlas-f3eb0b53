@@ -1,0 +1,155 @@
+---
+title: Contributing
+description: Learn how to contribute to LangCheck and help improve the library
+---
+
+## Overview
+
+Thank you for your interest in contributing to LangCheck! This guide will help you set up your development environment, understand our code standards, and submit your contributions.
+
+## Installing LangCheck from Source
+
+To install and run the LangCheck package from your local git repo:
+
+```bash
+# Install the langcheck package in editable mode with dev dependencies
+python -m pip install -e .[all,dev]
+
+# If you are using zsh, make sure to escape the brackets
+python -m pip install -e .\[all,dev\]
+```
+
+Once installed, you can test that everything works:
+
+```python
+# Try using langcheck
+# (If you edit the package, just restart the Python REPL to reflect your changes)
+python
+>>> from langcheck.metrics import is_float
+>>> is_float(['1', '-2', 'a'])
+Metric: is_float
+prompt generated_output reference_output  metric_value
+0   None                1             None             1
+1   None               -2             None             1
+2   None                a             None             0
+```
+
+## Code Quality
+
+### Running Formatter
+
+We auto-format the code with [ruff](https://github.com/astral-sh/ruff). Please format your code before submitting a pull request:
+
+```bash
+ruff format  # Format all files in the current directory (and any subdirectories)
+```
+
+### Running Static Checks
+
+We use [ruff](https://github.com/astral-sh/ruff) and [pyright](https://github.com/microsoft/pyright) for static analysis. Make sure your code passes both checks:
+
+```bash
+ruff check   # Ruff lint all files in the current directory (and any subdirectories)
+pyright      # Pyright lint all files in the current directory (and any subdirectories)
+```
+
+## Running Tests
+
+LangCheck has both standard and optional tests. The optional tests require additional dependencies for language-specific features.
+
+```bash
+# Run all tests
+python -m pytest -s -vv
+
+# Run non-optional tests only
+python -m pytest -s -vv -m "not optional"
+
+# Run optional tests only (requires optional Japanese tokenizers like Mecab)
+pip install .[optional]
+python -m pytest -s -vv -m "optional"
+```
+
+## Documentation
+
+To build and view the documentation locally:
+
+### 1. (Optional) Re-generate API documentation files
+
+This step is only necessary when you add or remove entire packages/modules:
+
+```bash
+sphinx-apidoc -f --no-toc --separate --module-first -t docs/_templates/ -o docs src/langcheck/ src/langcheck/stats.py src/langcheck/metrics/model_manager
+```
+
+<Warning>
+This will overwrite custom text in the `.rst` files. Check the code diffs for `UPDATE_AFTER_SPHINX_APIDOC` comments and manually re-apply them.
+</Warning>
+
+### 2. Build the HTML documentation
+
+```bash
+make -C docs clean html
+```
+
+<Note>
+You may see warnings like "more than one target found for cross-reference 'MetricValue'". These are harmless - Sphinx gets confused when we import a module's classes into its parent package's `__init__.py`.
+</Note>
+
+### 3. View documentation locally
+
+```bash
+python -m http.server -d docs/_build/html
+```
+
+## Publishing (Maintainers Only)
+
+To publish a new version of LangCheck:
+
+1. **Increment the version** in `pyproject.toml` and `src/langcheck/__init__.py`
+
+2. **Cut a new release** on GitHub with release notes
+
+3. **Build the package:**
+
+```bash
+python -m pip install build twine
+python -m build
+twine check dist/*
+```
+
+4. **Publish to PyPI:**
+
+```bash
+# Follow auth token instructions at https://pypi.org/manage/account/token/
+
+# TestPyPI (optional testing)
+twine upload -r testpypi dist/*
+
+# PyPI (production)
+twine upload dist/*
+```
+
+5. **Activate the new version** on ReadTheDocs (go to the "Versions" tab)
+
+## Getting Help
+
+If you have questions or need help with your contribution:
+
+- **Ask questions** - [Join our Discord community](https://discord.com/invite/Bkndx9RXqw)
+- **Report issues** - [Open an issue on GitHub](https://github.com/citadel-ai/langcheck/issues)
+- **Discuss ideas** - Start a discussion in GitHub Discussions
+
+## Code of Conduct
+
+We are committed to providing a welcoming and inclusive experience for everyone. Please be respectful and constructive in all interactions with the community.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="View on GitHub" icon="github" href="https://github.com/citadel-ai/langcheck">
+    Check out the source code
+  </Card>
+  <Card title="Tutorials" icon="book" href="/tutorials">
+    Learn how to use LangCheck
+  </Card>
+</CardGroup>

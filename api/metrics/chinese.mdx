@@ -1,0 +1,239 @@
+---
+title: Chinese Metrics
+description: API reference for Chinese language metrics in langcheck.metrics.zh
+---
+
+## Overview
+
+Chinese metrics are available from `langcheck.metrics.zh`. They provide evaluation capabilities optimized for Chinese text.
+
+```python
+from langcheck.metrics import zh
+
+# Reference-free metrics
+result = zh.sentiment(["这是一个友好的消息。"])
+result = zh.toxicity(["这是一个好句子。"])
+
+# Reference-based metrics
+result = zh.semantic_similarity(
+    generated_outputs=["猫坐下了。"],
+    reference_outputs=["猫正在坐着。"]
+)
+```
+
+<Note>
+  Chinese language support requires additional dependencies. Install with:
+  ```bash
+  pip install langcheck[zh]
+  ```
+</Note>
+
+## Reference-Free Text Quality
+
+### sentiment()
+
+Calculates sentiment scores for Chinese text.
+
+```python
+from langcheck.metrics.zh import sentiment
+
+result = sentiment(
+    generated_outputs=["我喜欢这个产品！"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Sentiment scores: 0 (negative), 0.5 (neutral), 1 (positive)
+</ResponseField>
+
+### toxicity()
+
+Calculates toxicity scores for Chinese text.
+
+```python
+from langcheck.metrics.zh import toxicity
+
+result = toxicity(
+    generated_outputs=["这是一个友好的消息。"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Toxicity scores between 0 (no toxicity) and 1 (high toxicity)
+</ResponseField>
+
+### xuyaochen_report_readability()
+
+Calculates readability for Chinese text using the Xu-Yao-Chen formula.
+
+```python
+from langcheck.metrics.zh import xuyaochen_report_readability
+
+result = xuyaochen_report_readability(
+    generated_outputs=["这是一个简单的句子。"]
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  Readability scores (higher = easier to read)
+</ResponseField>
+
+## Reference-Based Text Quality
+
+### semantic_similarity()
+
+Calculates semantic similarity for Chinese text.
+
+```python
+from langcheck.metrics.zh import semantic_similarity
+
+result = semantic_similarity(
+    generated_outputs=["猫坐在垃坡上。"],
+    reference_outputs=["一只猫正在垃坡上坐着。"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Similarity scores between 0 (different) and 1 (identical)
+</ResponseField>
+
+### rouge1(), rouge2(), rougeL()
+
+ROUGE metrics for Chinese text.
+
+```python
+from langcheck.metrics.zh import rouge1, rouge2, rougeL
+
+generated =["快速的棕色狐狸"]
+reference =["快速的棕色狐狸跳过懒狗"]
+
+r1 = rouge1(generated, reference)
+r2 = rouge2(generated, reference)
+rl = rougeL(generated, reference)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  ROUGE F1 scores between 0 and 1
+</ResponseField>
+
+## Source-Based Text Quality
+
+### factual_consistency()
+
+Checks factual consistency for Chinese text.
+
+```python
+from langcheck.metrics.zh import factual_consistency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+result = factual_consistency(
+    generated_outputs=["埃菲尔铁塔在巴黎。"],
+    sources=["巴黎是著名的埃菲尔铁塔的所在地。"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="sources" type="list[str] | str" required>
+  The source document(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional)
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Consistency scores: 0.0 (inconsistent), 0.5 (partially), 1.0 (consistent)
+</ResponseField>
+
+## Utilities
+
+### HanLPTokenizer
+
+Tokenizer for Chinese text using HanLP.
+
+```python
+from langcheck.metrics.zh import HanLPTokenizer
+
+tokenizer = HanLPTokenizer()
+tokens = tokenizer.tokenize("这是一个测试。")
+```
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Overview of metrics API
+- [English Metrics](/api/metrics/english) - English language metrics
+- [Japanese Metrics](/api/metrics/japanese) - Japanese language metrics
+- [German Metrics](/api/metrics/german) - German language metrics

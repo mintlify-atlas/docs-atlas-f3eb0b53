@@ -1,0 +1,448 @@
+---
+title: 'Custom Metrics'
+description: 'Create your own evaluation metrics with custom templates and scoring'
+---
+
+LangCheck allows you to create custom evaluation metrics tailored to your specific use case. You can define custom scoring criteria using Jinja2 templates and map LLM assessments to numerical scores.
+
+## Available Functions
+
+### custom_evaluator
+
+Creates a custom metric that evaluates generated outputs based on your own criteria.
+
+**Parameters:**
+- `generated_outputs` (list[str] | str | None): The model generated output(s)
+- `prompts` (list[str] | str | None): The prompts used to generate outputs
+- `sources` (list[str] | str | None): Source text(s) for the outputs
+- `reference_outputs` (list[str] | str | None): Reference outputs for comparison
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+- `metric_name` (str): Name of your custom metric
+- `score_map` (dict[str, float]): Maps assessment labels to numerical scores
+- `template_path` (str | None): Path to Jinja2 template file (.j2)
+- `language` (str): Language code ('en', 'ja', or 'de')
+- `template_str` (str | None): Template string (alternative to template_path)
+- `additional_inputs` (dict[str, IndividualInputType] | None): Additional custom inputs
+- `additional_input_name_to_prompt_var_mapping` (dict[str, str] | None): Maps additional input names to template variables
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import custom_evaluator
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+# Define template string
+template = """Evaluate if the response is concise (under 50 words).
+
+Response: {{ gen_output }}
+
+Is this response concise? Answer with one word: Good, Fair, or Poor."""
+
+# Define score mapping
+score_map = {
+    "Good": 1.0,
+    "Fair": 0.5,
+    "Poor": 0.0
+}
+
+outputs = [
+    "Paris is the capital of France.",
+    "Paris, which is located in the northern part of France along the Seine River, serves as the nation's capital city and is known for its rich history, culture, and landmarks such as the Eiffel Tower."
+]
+
+result = custom_evaluator(
+    generated_outputs=outputs,
+    prompts=None,
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="conciseness",
+    score_map=score_map,
+    template_path=None,
+    language="en",
+    template_str=template
+)
+
+print(result.metric_values)  # [1.0, 0.0]
+```
+
+**Using a template file:**
+```python
+# Save template to file: conciseness.j2
+# Evaluate if the response is concise.
+# 
+# User Query: {{ user_query }}
+# Response: {{ gen_output }}
+# 
+# Is this response concise? Answer: Good, Fair, or Poor.
+
+result = custom_evaluator(
+    generated_outputs=outputs,
+    prompts=prompts,
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="conciseness",
+    score_map=score_map,
+    template_path="./conciseness.j2",
+    language="en"
+)
+```
+
+**With additional inputs:**
+```python
+template = """Evaluate if the response follows the specified tone.
+
+Desired Tone: {{ desired_tone }}
+Response: {{ gen_output }}
+
+Does the response match the desired tone? Answer: Yes, Partially, or No."""
+
+score_map = {"Yes": 1.0, "Partially": 0.5, "No": 0.0}
+
+result = custom_evaluator(
+    generated_outputs=outputs,
+    prompts=None,
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="tone_matching",
+    score_map=score_map,
+    template_path=None,
+    language="en",
+    template_str=template,
+    additional_inputs={"desired_tone": ["professional", "casual"]},
+    additional_input_name_to_prompt_var_mapping={"desired_tone": "desired_tone"}
+)
+```
+
+### custom_pairwise_evaluator
+
+Creates a custom pairwise metric that compares two outputs side-by-side.
+
+**Parameters:**
+- `generated_outputs_a` (list[str] | str | None): Model A's generated outputs
+- `generated_outputs_b` (list[str] | str | None): Model B's generated outputs
+- `prompts` (list[str] | str | None): The prompts used to generate outputs
+- `sources_a` (list[str] | str | None): Source text(s) for Model A
+- `sources_b` (list[str] | str | None): Source text(s) for Model B
+- `reference_outputs` (list[str] | str | None): Reference outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+- `metric_name` (str): Name of your custom metric
+- `score_map` (dict[str, float]): Maps assessment labels to numerical scores
+- `template_path` (str | None): Path to Jinja2 template file (.j2)
+- `language` (str): Language code ('en', 'ja', or 'de')
+- `enforce_consistency` (bool): Check for position bias by swapping A and B. Default: True
+- `template_str` (str | None): Template string (alternative to template_path)
+- `additional_inputs` (dict | None): Additional custom inputs
+- `additional_input_name_to_prompt_var_mapping` (dict[str, str] | None): Maps additional input names to template variables
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import custom_pairwise_evaluator
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+# Define template
+template = """Which response is more detailed?
+
+Question: {{ user_query }}
+
+Response A: {{ gen_output_a }}
+Response B: {{ gen_output_b }}
+
+Which response is more detailed? Answer with one of: Response A, Response B, or Tie."""
+
+# Score map (must be symmetric for consistency enforcement)
+score_map = {
+    "Response A": 0.0,
+    "Tie": 0.5,
+    "Response B": 1.0
+}
+
+prompts = ["What is machine learning?"]
+outputs_a = ["ML is about computers learning from data."]
+outputs_b = [
+    "Machine learning is a branch of artificial intelligence that enables "
+    "computers to learn from data without explicit programming. It uses "
+    "algorithms to identify patterns and make predictions."
+]
+
+result = custom_pairwise_evaluator(
+    generated_outputs_a=outputs_a,
+    generated_outputs_b=outputs_b,
+    prompts=prompts,
+    sources_a=None,
+    sources_b=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="detail_level",
+    score_map=score_map,
+    template_path=None,
+    language="en",
+    template_str=template
+)
+
+print(result.metric_values)  # [1.0] - Response B is more detailed
+```
+
+## Template Variables
+
+### Standard Variables
+
+Your Jinja2 templates can use these standard placeholders:
+
+**For custom_evaluator:**
+- `{{ gen_output }}` - The generated output
+- `{{ user_query }}` - The prompt/query
+- `{{ src }}` - The source text
+- `{{ ref_output }}` - The reference output
+
+**For custom_pairwise_evaluator:**
+- `{{ gen_output_a }}` - Model A's generated output
+- `{{ gen_output_b }}` - Model B's generated output
+- `{{ user_query }}` - The prompt/query
+- `{{ src_a }}` - Source text for Model A
+- `{{ src_b }}` - Source text for Model B
+- `{{ ref_output }}` - The reference output
+
+Not all variables are required - only include the ones you need.
+
+### Additional Variables
+
+You can pass custom variables using `additional_inputs` and `additional_input_name_to_prompt_var_mapping`:
+
+```python
+template = """Evaluate the response for {{ evaluation_criteria }}.
+
+Response: {{ gen_output }}
+Guidelines: {{ guidelines }}
+
+Score: Good, Fair, or Poor"""
+
+result = custom_evaluator(
+    generated_outputs=outputs,
+    prompts=None,
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="custom_evaluation",
+    score_map={"Good": 1.0, "Fair": 0.5, "Poor": 0.0},
+    template_path=None,
+    language="en",
+    template_str=template,
+    additional_inputs={
+        "evaluation_criteria": ["clarity"],
+        "guidelines": ["Be specific and concise"]
+    },
+    additional_input_name_to_prompt_var_mapping={
+        "evaluation_criteria": "evaluation_criteria",
+        "guidelines": "guidelines"
+    }
+)
+```
+
+## Score Maps
+
+The `score_map` dictionary maps the LLM's assessment to numerical scores:
+
+```python
+# Binary classification
+score_map = {"Yes": 1.0, "No": 0.0}
+
+# Three-level scale
+score_map = {"Good": 1.0, "Fair": 0.5, "Poor": 0.0}
+
+# Five-level scale
+score_map = {
+    "Excellent": 1.0,
+    "Good": 0.75,
+    "Average": 0.5,
+    "Poor": 0.25,
+    "Very Poor": 0.0
+}
+
+# For pairwise comparison (must be symmetric)
+score_map = {
+    "Response A": 0.0,
+    "Tie": 0.5,
+    "Response B": 1.0
+}
+```
+
+**Important:** Use ASCII characters for assessment labels, even if the rest of your template is in another language (e.g., Japanese). LLM models can behave inconsistently with non-ASCII assessment labels.
+
+## Template Best Practices
+
+### 1. Clear Instructions
+
+Be explicit about what you're evaluating:
+
+```jinja2
+Evaluate if the response is factually correct.
+
+Response: {{ gen_output }}
+Source: {{ src }}
+
+Is the response factually correct based on the source?
+Answer with one word: Correct, Partially Correct, or Incorrect.
+```
+
+### 2. Specific Output Format
+
+Clearly specify the expected format:
+
+```jinja2
+You must answer with EXACTLY one of these options:
+- Good
+- Fair
+- Poor
+
+Do not provide any explanation, just the option.
+```
+
+### 3. Provide Context
+
+Give the LLM enough context to make accurate judgments:
+
+```jinja2
+Evaluate the relevance of the response to the query.
+
+Query: {{ user_query }}
+Response: {{ gen_output }}
+
+Does the response directly address the query?
+Answer: Relevant, Partially Relevant, or Not Relevant.
+```
+
+### 4. Use Examples (Few-Shot)
+
+Include examples in your template:
+
+```jinja2
+Evaluate sentiment. Examples:
+
+Text: "I love this!" -> Positive
+Text: "This is terrible." -> Negative
+Text: "It's okay." -> Neutral
+
+Now evaluate:
+Text: {{ gen_output }} -> ?
+
+Answer: Positive, Negative, or Neutral
+```
+
+## Use Cases
+
+### Domain-Specific Evaluation
+
+```python
+template = """Evaluate if the medical response follows clinical guidelines.
+
+Patient Query: {{ user_query }}
+Response: {{ gen_output }}
+Clinical Guidelines: {{ src }}
+
+Does the response align with clinical guidelines?
+Answer: Compliant, Partially Compliant, or Non-Compliant."""
+
+score_map = {
+    "Compliant": 1.0,
+    "Partially Compliant": 0.5,
+    "Non-Compliant": 0.0
+}
+
+result = custom_evaluator(
+    generated_outputs=medical_responses,
+    prompts=patient_queries,
+    sources=clinical_guidelines,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="clinical_compliance",
+    score_map=score_map,
+    template_path=None,
+    language="en",
+    template_str=template
+)
+```
+
+### Style Evaluation
+
+```python
+template = """Evaluate the writing style.
+
+Text: {{ gen_output }}
+
+Is this text written in a professional business style?
+Answer: Professional, Somewhat Professional, or Casual."""
+
+score_map = {
+    "Professional": 1.0,
+    "Somewhat Professional": 0.5,
+    "Casual": 0.0
+}
+
+result = custom_evaluator(
+    generated_outputs=business_emails,
+    prompts=None,
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="professionalism",
+    score_map=score_map,
+    template_path=None,
+    language="en",
+    template_str=template
+)
+```
+
+### Custom Pairwise Comparison
+
+```python
+template = """Which response is more empathetic?
+
+User Message: {{ user_query }}
+
+Response A: {{ gen_output_a }}
+Response B: {{ gen_output_b }}
+
+Which response shows more empathy?
+Answer: Response A, Response B, or Tie."""
+
+score_map = {
+    "Response A": 0.0,
+    "Tie": 0.5,
+    "Response B": 1.0
+}
+
+result = custom_pairwise_evaluator(
+    generated_outputs_a=chatbot_a_responses,
+    generated_outputs_b=chatbot_b_responses,
+    prompts=user_messages,
+    sources_a=None,
+    sources_b=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="empathy_comparison",
+    score_map=score_map,
+    template_path=None,
+    language="en",
+    template_str=template
+)
+```
+
+## Importing Functions
+
+```python
+from langcheck.metrics import custom_evaluator, custom_pairwise_evaluator
+```
+
+## Note on EvalClient Requirement
+
+Custom metrics require an EvalClient instance. See [Eval Clients](/metrics/eval-clients) for setup instructions.

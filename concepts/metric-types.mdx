@@ -1,0 +1,517 @@
+---
+title: 'Metric Types'
+description: 'Comprehensive guide to LangCheck metric categories and language support'
+icon: 'grid'
+---
+
+## Overview
+
+LangCheck metrics are organized by the type of ground truth data required for evaluation. Understanding these categories helps you choose the right metrics for your use case.
+
+## Metric Categories
+
+| Metric Type | Required Inputs | Example Metrics | Languages |
+|-------------|----------------|-----------------|----------|
+| [Reference-Free](#reference-free-metrics) | Generated outputs only | toxicity, sentiment, fluency | EN, JA, DE, ZH |
+| [Reference-Based](#reference-based-metrics) | Generated outputs + references | semantic_similarity, rouge2 | EN, JA, DE, ZH |
+| [Source-Based](#source-based-metrics) | Generated outputs + source texts | factual_consistency, context_relevance | EN, JA, DE, ZH |
+| [Query-Based](#query-based-metrics) | Generated outputs + prompts | answer_relevance | EN, JA |
+| [Text Structure](#text-structure-metrics) | Generated outputs only | is_json_object, is_float, is_int | All Languages |
+| [Pairwise](#pairwise-metrics) | Two generated outputs + prompts | pairwise_comparison | EN, JA |
+
+<Note>
+**Language Codes**: EN (English), JA (Japanese), DE (German), ZH (Chinese)
+</Note>
+
+## Reference-Free Metrics
+
+Reference-free metrics evaluate text quality without requiring any ground truth. They analyze the generated text directly.
+
+### When to Use
+
+- **No reference data available**: You don't have human-written answers or ground truth
+- **General quality checks**: Evaluating toxicity, sentiment, or fluency
+- **Content moderation**: Detecting harmful or inappropriate content
+- **Quick evaluations**: No need to prepare reference data
+
+### Example: Toxicity Detection
+
+```python
+from langcheck.metrics import toxicity
+
+generated_outputs = [
+    "This is a helpful response.",
+    "I disagree with your perspective.",
+    "That's an interesting point of view."
+]
+
+# No ground truth needed
+toxicity_scores = toxicity(generated_outputs)
+print(toxicity_scores)
+```
+
+### Common Reference-Free Metrics
+
+<AccordionGroup>
+  <Accordion title="toxicity - Detect harmful content">
+    Scores between 0 (not toxic) and 1 (very toxic).
+    
+    ```python
+    from langcheck.metrics import toxicity
+    
+    scores = toxicity(generated_outputs)
+    assert scores < 0.1  # Ensure low toxicity
+    ```
+  </Accordion>
+  
+  <Accordion title="sentiment - Analyze emotional tone">
+    Scores between 0 (negative) and 1 (positive).
+    
+    ```python
+    from langcheck.metrics import sentiment
+    
+    scores = sentiment(generated_outputs)
+    # 0.0 = negative, 0.5 = neutral, 1.0 = positive
+    ```
+  </Accordion>
+  
+  <Accordion title="fluency - Evaluate grammatical quality">
+    Scores between 0 (poor fluency) and 1 (excellent fluency).
+    
+    ```python
+    from langcheck.metrics import fluency
+    
+    scores = fluency(generated_outputs)
+    assert scores > 0.7  # Ensure good fluency
+    ```
+  </Accordion>
+  
+  <Accordion title="ai_disclaimer_similarity - Check for AI disclaimers">
+    Detects if text contains disclaimers like "As an AI language model...".
+    
+    ```python
+    from langcheck.metrics import ai_disclaimer_similarity
+    
+    scores = ai_disclaimer_similarity(generated_outputs)
+    assert scores < 0.5  # Avoid AI disclaimers
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Language-Specific Import
+
+For non-English text, import from the language-specific module:
+
+```python
+# Japanese
+from langcheck.metrics.ja import fluency
+japanese_scores = fluency(japanese_outputs)
+
+# German
+from langcheck.metrics.de import sentiment
+german_scores = sentiment(german_outputs)
+
+# Chinese
+from langcheck.metrics.zh import toxicity
+chinese_scores = toxicity(chinese_outputs)
+```
+
+## Reference-Based Metrics
+
+Reference-based metrics compare generated outputs against ground truth references (expected answers).
+
+### When to Use
+
+- **You have reference answers**: Human-written or expert-validated responses
+- **Accuracy matters**: In Q&A systems, translation, summarization
+- **Benchmarking**: Comparing different models against the same references
+- **Regression testing**: Ensuring new versions maintain quality
+
+### Example: Semantic Similarity
+
+```python
+from langcheck.metrics import semantic_similarity
+
+generated_outputs = ["The cat sat on the mat."]
+reference_outputs = ["A cat was sitting on a mat."]
+
+# Compare semantic meaning
+similarity = semantic_similarity(generated_outputs, reference_outputs)
+print(f"Similarity: {similarity.metric_values[0]:.2f}")  # ~0.95
+```
+
+### Common Reference-Based Metrics
+
+<AccordionGroup>
+  <Accordion title="semantic_similarity - Compare meaning">
+    Cosine similarity between embeddings, scores between -1 and 1 (typically 0 to 1).
+    
+    ```python
+    from langcheck.metrics import semantic_similarity
+    
+    similarity = semantic_similarity(
+        generated_outputs=['The cat is happy'],
+        reference_outputs=['The feline is joyful']
+    )
+    assert similarity > 0.8
+    ```
+  </Accordion>
+  
+  <Accordion title="rouge1 / rouge2 / rougeL - Text overlap metrics">
+    ROUGE (Recall-Oriented Understudy for Gisting Evaluation) scores for n-gram overlap.
+    
+    ```python
+    from langcheck.metrics import rouge2
+    
+    scores = rouge2(generated_outputs, reference_outputs)
+    # Higher scores = more overlap with reference
+    ```
+  </Accordion>
+  
+  <Accordion title="answer_correctness - Validate answers with LLM">
+    Uses an LLM to judge if the generated answer is correct compared to reference.
+    
+    ```python
+    from langcheck.metrics import answer_correctness
+    from langcheck.metrics.eval_clients import OpenAIEvalClient
+    
+    scores = answer_correctness(
+        generated_outputs=outputs,
+        reference_outputs=references,
+        prompts=questions,
+        eval_model=OpenAIEvalClient()
+    )
+    # Returns 0.0 (Incorrect), 0.5 (Partially Correct), or 1.0 (Correct)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Source-Based Metrics
+
+Source-based metrics evaluate generated outputs against source material. Sources are **inputs** (like retrieved documents), not outputs.
+
+### When to Use
+
+- **RAG applications**: Retrieval Augmented Generation systems
+- **Fact-checking**: Ensuring outputs don't hallucinate
+- **Summarization**: Checking summaries stay faithful to source
+- **Document Q&A**: Verifying answers come from provided context
+
+### Example: Factual Consistency
+
+```python
+from langcheck.metrics import factual_consistency
+
+# Source: Retrieved documents passed to the LLM
+sources = [
+    "The Eiffel Tower is 330 meters tall and located in Paris."
+]
+
+generated_outputs = [
+    "The Eiffel Tower in Paris stands at 330 meters."
+]
+
+# Check if output is factually consistent with source
+consistency = factual_consistency(generated_outputs, sources)
+print(f"Consistency: {consistency.metric_values[0]:.2f}")
+```
+
+### RAG Use Case
+
+```python
+import langcheck
+
+def evaluate_rag_output(query, retrieved_docs, llm_response):
+    """Evaluate a RAG system's output."""
+    
+    # Check factual consistency with retrieved docs
+    consistency = langcheck.metrics.factual_consistency(
+        generated_outputs=llm_response,
+        sources=retrieved_docs
+    )
+    
+    # Check if docs are relevant to query
+    relevance = langcheck.metrics.context_relevance(
+        sources=retrieved_docs,
+        prompts=query
+    )
+    
+    return consistency, relevance
+```
+
+### Common Source-Based Metrics
+
+<AccordionGroup>
+  <Accordion title="factual_consistency - Detect hallucinations">
+    Scores between 0 and 1, measuring if generated text is factually consistent with source.
+    
+    ```python
+    from langcheck.metrics import factual_consistency
+    
+    consistency = factual_consistency(
+        generated_outputs=llm_outputs,
+        sources=retrieved_documents
+    )
+    assert consistency > 0.8  # High factual consistency
+    ```
+  </Accordion>
+  
+  <Accordion title="context_relevance - Evaluate retrieval quality">
+    Measures if the source documents are relevant to the prompt.
+    
+    ```python
+    from langcheck.metrics import context_relevance
+    
+    relevance = context_relevance(
+        sources=retrieved_docs,
+        prompts=user_queries
+    )
+    # Higher scores = more relevant context
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Query-Based Metrics
+
+Query-based metrics evaluate how well outputs address the input query or prompt.
+
+### When to Use
+
+- **Q&A systems**: Ensuring answers are relevant to questions
+- **Chatbots**: Checking responses address user queries
+- **Search systems**: Validating results match search intent
+
+### Example: Answer Relevance
+
+```python
+from langcheck.metrics import answer_relevance
+
+prompts = ["What is the capital of France?"]
+generated_outputs = ["Paris is the capital and largest city of France."]
+
+# Check if answer is relevant to query
+relevance = answer_relevance(generated_outputs, prompts)
+print(f"Relevance: {relevance.metric_values[0]:.2f}")
+```
+
+## Text Structure Metrics
+
+Text structure metrics validate the format of generated outputs. They return binary values: 1 (valid) or 0 (invalid).
+
+### When to Use
+
+- **Structured output validation**: Ensuring LLMs produce expected formats
+- **API responses**: Validating JSON outputs
+- **Data extraction**: Checking extracted values are in correct format
+- **Guardrails**: Rejecting improperly formatted outputs
+
+### Example: JSON Validation
+
+```python
+from langcheck.metrics import is_json_object
+
+generated_outputs = [
+    '{"name": "Alice", "age": 30}',  # Valid JSON object
+    '[1, 2, 3]',                      # Valid JSON but not an object
+    'not json'                         # Invalid JSON
+]
+
+results = is_json_object(generated_outputs)
+print(results.metric_values)  # [1, 0, 0]
+```
+
+### Common Text Structure Metrics
+
+<AccordionGroup>
+  <Accordion title="is_json_object / is_json_array - Validate JSON">
+    Check if text is valid JSON object or array.
+    
+    ```python
+    from langcheck.metrics import is_json_object, is_json_array
+    
+    # Ensure output is a valid JSON object
+    assert is_json_object(outputs).all()
+    
+    # Or ensure it's a JSON array
+    assert is_json_array(outputs).all()
+    ```
+  </Accordion>
+  
+  <Accordion title="is_int - Validate integers">
+    Check if text can be parsed as an integer, optionally within a domain.
+    
+    ```python
+    from langcheck.metrics import is_int
+    
+    # Any integer
+    assert is_int(["42", "0", "-10"]).all()
+    
+    # Integer in range 1-10
+    ratings = is_int(outputs, domain=range(1, 11))
+    assert ratings.all()
+    
+    # Integer in set
+    choices = is_int(outputs, domain={1, 3, 5})
+    ```
+  </Accordion>
+  
+  <Accordion title="is_float - Validate floating-point numbers">
+    Check if text can be parsed as a float, optionally within min/max range.
+    
+    ```python
+    from langcheck.metrics import is_float
+    
+    # Any float
+    assert is_float(["3.14", "0.0", "-2.5"]).all()
+    
+    # Float between 0 and 1
+    probabilities = is_float(outputs, min=0, max=1)
+    assert probabilities.all()
+    ```
+  </Accordion>
+  
+  <Accordion title="matches_regex - Pattern matching">
+    Check if text matches a regular expression pattern.
+    
+    ```python
+    from langcheck.metrics import matches_regex
+    
+    # Validate email format
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    assert matches_regex(outputs, email_pattern).all()
+    ```
+  </Accordion>
+  
+  <Accordion title="contains_all_strings / contains_any_strings - String matching">
+    Check if text contains specific strings.
+    
+    ```python
+    from langcheck.metrics import contains_all_strings, contains_any_strings
+    
+    # Must contain all required terms
+    required = ['name', 'address', 'phone']
+    assert contains_all_strings(outputs, required).all()
+    
+    # Must not contain blacklisted words
+    blacklist = ['restricted', 'forbidden']
+    assert not contains_any_strings(outputs, blacklist).any()
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Language-Agnostic
+
+Text structure metrics work with all languages:
+
+```python
+from langcheck.metrics import is_json_object
+
+# Works for any language
+english_json = is_json_object(english_outputs)
+japanese_json = is_json_object(japanese_outputs)
+german_json = is_json_object(german_outputs)
+```
+
+## Pairwise Metrics
+
+Pairwise metrics compare two generated outputs to determine which is better.
+
+### When to Use
+
+- **A/B testing**: Comparing two models or prompts
+- **Model selection**: Choosing the best response
+- **RLHF training**: Generating preference data
+- **Response ranking**: Ordering multiple candidates
+
+### Example: Pairwise Comparison
+
+```python
+from langcheck.metrics import pairwise_comparison
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+prompts = ["Explain quantum computing simply."]
+outputs_a = ["Quantum computers use qubits that can be 0 and 1 simultaneously."]
+outputs_b = ["It's like a super fast regular computer."]
+
+# Compare which response is better
+comparison = pairwise_comparison(
+    generated_outputs_a=outputs_a,
+    generated_outputs_b=outputs_b,
+    prompts=prompts,
+    eval_model=OpenAIEvalClient()
+)
+
+# Returns: 0.0 (A better), 0.5 (Tie), or 1.0 (B better)
+print(f"Result: {comparison.metric_values[0]}")
+```
+
+### With Optional Context
+
+You can provide reference outputs and sources for more informed comparisons:
+
+```python
+comparison = pairwise_comparison(
+    generated_outputs_a=outputs_a,
+    generated_outputs_b=outputs_b,
+    prompts=prompts,
+    reference_outputs=ground_truth,  # Optional
+    sources=retrieved_docs,          # Optional
+    eval_model=OpenAIEvalClient()
+)
+```
+
+## Language Support Matrix
+
+### Full Support (EN, JA, DE, ZH)
+
+- Reference-free: toxicity, sentiment, fluency
+- Reference-based: semantic_similarity, rouge metrics
+- Source-based: factual_consistency, context_relevance
+
+### Partial Support (EN, JA)
+
+- Query-based: answer_relevance
+- Pairwise: pairwise_comparison
+
+### Universal Support (All Languages)
+
+- Text structure: is_json_object, is_float, is_int, matches_regex, contains_strings
+
+<Tip>
+For English text, you can import metrics directly from `langcheck.metrics`. For other languages, use `langcheck.metrics.ja`, `langcheck.metrics.de`, or `langcheck.metrics.zh`.
+</Tip>
+
+## Choosing the Right Metric
+
+<Steps>
+  <Step title="Identify available data">
+    Do you have reference answers? Source documents? Or just generated outputs?
+  </Step>
+  
+  <Step title="Define your quality criteria">
+    What aspects matter? Accuracy, safety, fluency, format, relevance?
+  </Step>
+  
+  <Step title="Select metrics">
+    Choose metrics that match your data availability and quality criteria
+  </Step>
+  
+  <Step title="Set thresholds">
+    Determine acceptable score ranges based on your requirements
+  </Step>
+  
+  <Step title="Implement evaluation">
+    Add metrics to your testing, monitoring, or guardrails pipeline
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Evaluation Workflow" icon="diagram-project" href="/concepts/evaluation-workflow">
+    Learn best practices for structuring LLM evaluations
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/metrics">
+    Explore detailed API documentation for all metrics
+  </Card>
+</CardGroup>

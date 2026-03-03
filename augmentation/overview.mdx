@@ -1,0 +1,121 @@
+---
+title: 'Text Augmentation Overview'
+description: 'Learn how to use text augmentation for robustness testing'
+---
+
+## What is Text Augmentation?
+
+Text augmentation is a technique for automatically generating variations of text to test the robustness and reliability of LLM applications. By applying controlled perturbations to your prompts and inputs, you can:
+
+- **Test model consistency** - Verify that your LLM responds appropriately to paraphrased or slightly modified inputs
+- **Identify biases** - Detect gender, demographic, or other biases by testing with systematically varied prompts
+- **Improve robustness** - Find edge cases where your model behaves unexpectedly
+- **Evaluate resilience** - Test how well your application handles typos, formatting changes, or adversarial inputs
+
+## Common Augmentation Patterns
+
+LangCheck provides several categories of text augmentation:
+
+### Character-Level Augmentations
+Modify individual characters to simulate real-world text variations:
+- **Typos** - Keyboard typos, OCR errors
+- **Case changes** - UPPERCASE, lowercase, or MiXeD case
+- **Full-width conversion** - Convert ASCII to full-width UTF-8 characters
+- **Punctuation removal** - Strip punctuation marks
+
+### Word-Level Augmentations
+Change words while preserving meaning:
+- **Synonyms** - Replace words with synonyms
+- **Gender** - Change pronouns to test for gender bias
+
+### Sentence-Level Augmentations
+Rephrase entire sentences or prompts:
+- **Rephrasing** - Generate semantically equivalent variations
+- **Role context** - Add system or user role context to prompts
+
+### Adversarial Augmentations
+Test security and safety:
+- **Jailbreak templates** - Apply known jailbreak patterns
+- **Payload splitting** - Split prompts to test for injection vulnerabilities
+
+## How to Use Augmented Text with Metrics
+
+Text augmentation works seamlessly with LangCheck metrics. Here's a typical workflow:
+
+```python
+import langcheck
+
+# Original prompts
+prompts = [
+    "What is the capital of France?",
+    "How do I reset my password?"
+]
+
+# Generate augmented versions
+male_prompts = langcheck.augment.gender(prompts, to_gender='male')
+female_prompts = langcheck.augment.gender(prompts, to_gender='female')
+
+# Generate outputs from your LLM
+male_outputs = [my_llm_app(prompt) for prompt in male_prompts]
+female_outputs = [my_llm_app(prompt) for prompt in female_prompts]
+
+# Compare metrics to detect bias
+male_sentiment = langcheck.metrics.sentiment(male_outputs)
+female_sentiment = langcheck.metrics.sentiment(female_outputs)
+
+print(f"Male sentiment: {male_sentiment.mean()}")
+print(f"Female sentiment: {female_sentiment.mean()}")
+```
+
+### Testing Robustness with Multiple Augmentations
+
+```python
+# Test with typos
+typo_prompts = langcheck.augment.keyboard_typo(
+    prompts,
+    num_perturbations=3,
+    aug_char_p=0.1
+)
+
+typo_outputs = [my_llm_app(prompt) for prompt in typo_prompts]
+
+# Ensure the model still provides relevant answers
+assert langcheck.metrics.answer_relevance(typo_outputs, prompts * 3) > 0.7
+```
+
+### Combining Augmentations
+
+```python
+# Chain multiple augmentations
+augmented = prompts
+augmented = langcheck.augment.synonym(augmented, num_perturbations=1)
+augmented = langcheck.augment.change_case(augmented, to_case='lowercase')
+
+outputs = [my_llm_app(prompt) for prompt in augmented]
+
+# Test that outputs are still fluent and non-toxic
+assert langcheck.metrics.fluency(outputs) > 0.8
+assert langcheck.metrics.toxicity(outputs) < 0.1
+```
+
+## Language Support
+
+LangCheck provides augmentation functions for multiple languages:
+
+- **English** - Full suite of augmentations
+- **Japanese** - Character conversion, synonyms, rephrasing, and adversarial testing
+
+See the language-specific pages for detailed documentation:
+- [English Augmentations](/augmentation/english)
+- [Japanese Augmentations](/augmentation/japanese)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="English Functions" icon="language" href="/augmentation/english">
+    Explore all English text augmentation functions
+  </Card>
+  <Card title="Japanese Functions" icon="language" href="/augmentation/japanese">
+    Explore all Japanese text augmentation functions
+  </Card>
+</CardGroup>

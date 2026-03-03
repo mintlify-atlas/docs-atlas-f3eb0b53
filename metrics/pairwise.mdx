@@ -1,0 +1,311 @@
+---
+title: 'Pairwise Metrics'
+description: 'Metrics that compare two different model outputs side-by-side'
+---
+
+Pairwise metrics compare two generated outputs (A and B) to determine which one is better. These metrics are useful for model comparison, A/B testing, and preference learning.
+
+## Available Metrics
+
+### pairwise_comparison
+
+Calculates which of two generated outputs is better in response to a given prompt.
+
+**Scores:** 0.0 (Response A is better), 0.5 (Tie), or 1.0 (Response B is better). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs_a` (list[str] | str): Model A's generated output(s) to evaluate
+- `generated_outputs_b` (list[str] | str): Model B's generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `sources_a` (list[str] | str | None): Optional source text(s) for Model A's outputs
+- `sources_b` (list[str] | str | None): Optional source text(s) for Model B's outputs
+- `reference_outputs` (list[str] | str | None): Optional reference outputs for comparison
+- `enforce_consistency` (bool): When True, only return a score if it's consistent when A and B are swapped (reduces position bias). Default: True
+- `calculated_confidence` (bool): When True, calculate a confidence score using simulated annotators. Default: False
+- `preference_data_path` (str): Path to preference data for confidence calculation
+- `k` (int): Number of preference annotation examples. Default: 5
+- `n` (int): Number of simulated annotators. Default: 5
+- `seed` (int | None): Random seed for simulated annotators
+- `eval_model` (EvalClient | None): The EvalClient instance for evaluation (required)
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import pairwise_comparison
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+prompts = ["Explain photosynthesis."]
+
+outputs_a = [
+    "Photosynthesis is how plants make food using sunlight."
+]
+outputs_b = [
+    "Photosynthesis is the process by which plants convert light energy "
+    "into chemical energy, using chlorophyll to capture sunlight and "
+    "produce glucose from carbon dioxide and water."
+]
+
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    eval_model=eval_client
+)
+print(result.metric_values)  # [1.0] - Response B is better
+print(result.explanations[0])  # Explanation of why B is better
+```
+
+**With source documents:**
+```python
+sources_a = ["Plants use sunlight to make food."]
+sources_b = [
+    "Photosynthesis occurs in chloroplasts, where chlorophyll "
+    "absorbs light energy to convert CO2 and H2O into glucose."
+]
+
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    sources_a=sources_a,
+    sources_b=sources_b,
+    eval_model=eval_client
+)
+```
+
+**With reference outputs:**
+```python
+references = [
+    "Photosynthesis is the process plants use to convert sunlight, "
+    "carbon dioxide, and water into glucose and oxygen."
+]
+
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    reference_outputs=references,
+    eval_model=eval_client
+)
+```
+
+**Without consistency enforcement (faster but may have position bias):**
+```python
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    enforce_consistency=False,
+    eval_model=eval_client
+)
+```
+
+**With confidence scores:**
+```python
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    calculated_confidence=True,
+    preference_data_path="path/to/preference_data.jsonl",
+    k=5,
+    n=5,
+    eval_model=eval_client
+)
+# Confidence scores are appended to explanations
+print(result.explanations[0])  # Includes confidence score
+```
+
+## Importing Metrics
+
+For English text, import directly from `langcheck.metrics`:
+
+```python
+from langcheck.metrics import pairwise_comparison
+```
+
+For Japanese:
+
+```python
+from langcheck.metrics.ja import pairwise_comparison
+```
+
+## Use Cases
+
+### Model Comparison
+
+Compare different models or model versions:
+
+```python
+from langcheck.metrics import pairwise_comparison
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+# Generate outputs from two different models
+model_a_outputs = model_a.generate(prompts)
+model_b_outputs = model_b.generate(prompts)
+
+result = pairwise_comparison(
+    model_a_outputs,
+    model_b_outputs,
+    prompts,
+    eval_model=eval_client
+)
+
+# Calculate win rate
+scores = result.metric_values
+a_wins = sum(1 for s in scores if s == 0.0)
+ties = sum(1 for s in scores if s == 0.5)
+b_wins = sum(1 for s in scores if s == 1.0)
+
+print(f"Model A wins: {a_wins}")
+print(f"Ties: {ties}")
+print(f"Model B wins: {b_wins}")
+```
+
+### A/B Testing
+
+Test different prompts or configurations:
+
+```python
+# Compare two different prompt strategies
+strategy_a_outputs = generate_with_strategy_a(queries)
+strategy_b_outputs = generate_with_strategy_b(queries)
+
+result = pairwise_comparison(
+    strategy_a_outputs,
+    strategy_b_outputs,
+    queries,
+    eval_model=eval_client
+)
+
+# Determine winning strategy
+avg_score = sum(result.metric_values) / len(result.metric_values)
+if avg_score < 0.5:
+    print("Strategy A performs better")
+elif avg_score > 0.5:
+    print("Strategy B performs better")
+else:
+    print("Both strategies perform equally")
+```
+
+### RAG System Comparison
+
+Compare different retrieval or generation strategies:
+
+```python
+# Compare two RAG configurations
+config_a_outputs, sources_a = rag_system_a.generate(queries)
+config_b_outputs, sources_b = rag_system_b.generate(queries)
+
+result = pairwise_comparison(
+    config_a_outputs,
+    config_b_outputs,
+    queries,
+    sources_a=sources_a,
+    sources_b=sources_b,
+    eval_model=eval_client
+)
+
+for i, score in enumerate(result.metric_values):
+    if score == 1.0:
+        print(f"Query {i}: Config B is better")
+        print(f"Explanation: {result.explanations[i]}")
+```
+
+### Preference Learning
+
+Collect preference data for training reward models:
+
+```python
+import json
+
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    eval_model=eval_client
+)
+
+# Save preference data
+preference_data = []
+for i, score in enumerate(result.metric_values):
+    preference_data.append({
+        "prompt": prompts[i],
+        "response_a": outputs_a[i],
+        "response_b": outputs_b[i],
+        "preference": "a" if score == 0.0 else ("tie" if score == 0.5 else "b"),
+        "explanation": result.explanations[i]
+    })
+
+with open("preferences.jsonl", "w") as f:
+    for item in preference_data:
+        f.write(json.dumps(item) + "\n")
+```
+
+## Understanding Position Bias
+
+LLM evaluators often exhibit position bias, favoring the first or second response regardless of quality. The `enforce_consistency` parameter addresses this:
+
+```python
+# With consistency enforcement (default)
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    enforce_consistency=True,
+    eval_model=eval_client
+)
+# Only returns a score if the evaluation is consistent when A and B are swapped
+# This ensures the score is not affected by position bias
+
+# Without consistency enforcement
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    enforce_consistency=False,
+    eval_model=eval_client
+)
+# Faster, but may be affected by position bias
+```
+
+## Score Interpretation
+
+- **0.0**: Response A is better than Response B
+- **0.5**: Tie - both responses are of equal quality
+- **1.0**: Response B is better than Response A
+- **None**: Unable to determine (only when `enforce_consistency=True` and the evaluation is inconsistent)
+
+## Confidence Scores
+
+When `calculated_confidence=True`, the metric uses the Simulated Annotators method to estimate confidence:
+
+```python
+result = pairwise_comparison(
+    outputs_a,
+    outputs_b,
+    prompts,
+    calculated_confidence=True,
+    k=5,  # Number of preference examples
+    n=5,  # Number of simulated annotators
+    eval_model=eval_client
+)
+
+# Confidence score is appended to explanations
+for explanation in result.explanations:
+    print(explanation)
+    # Output includes: "Confidence score: 0.85"
+```
+
+Higher confidence scores indicate more reliable evaluations. This is based on the paper "Trust or Escalate: LLM Judges with Provable Guarantees for Human Agreement" (https://arxiv.org/abs/2407.18370).
+
+## Note on EvalClient Requirement
+
+The `pairwise_comparison` metric requires an EvalClient instance. See [Eval Clients](/metrics/eval-clients) for setup instructions.

@@ -1,0 +1,330 @@
+---
+title: 'Query-Based Metrics'
+description: 'Metrics that evaluate outputs in the context of input queries'
+---
+
+Query-based metrics require the input query or prompt to evaluate the generated outputs. These metrics assess how well the output addresses the user's question or request.
+
+## Available Metrics
+
+### answer_relevance
+
+Calculates the relevance of generated outputs to the prompt.
+
+**Scores:** 0.0 (Not Relevant), 0.5 (Partially Relevant), or 1.0 (Fully Relevant). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import answer_relevance
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+prompts = ["What is the capital of France?"]
+outputs = ["Paris is the capital of France."]
+
+result = answer_relevance(outputs, prompts, eval_model=eval_client)
+print(result.metric_values)  # [1.0]
+```
+
+### answer_safety
+
+Calculates the safety of generated outputs in response to the prompt.
+
+**Scores:** 0.0 (Unsafe), 0.5 (Partially Unsafe), or 1.0 (Safe). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import answer_safety
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+prompts = ["How do I stay healthy?"]
+outputs = ["Regular exercise and balanced diet are key to staying healthy."]
+
+result = answer_safety(outputs, prompts, eval_model=eval_client)
+print(result.metric_values)  # [1.0]
+```
+
+### adult_content
+
+Calculates whether adult content is included in the generated outputs.
+
+**Scores:** 0.0 (Low Risk), 0.5 (Medium Risk), or 1.0 (High Risk). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+### harmful_activity
+
+Calculates whether suggestions or instructions for harmful activity are included in the generated outputs.
+
+**Scores:** 0.0 (Low Risk), 0.5 (Medium Risk), or 1.0 (High Risk). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+### hate_speech
+
+Calculates whether hate speech is included in the generated outputs.
+
+**Scores:** 0.0 (Low Risk), 0.5 (Medium Risk), or 1.0 (High Risk). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+### personal_data_leakage
+
+Calculates the personal data leakage risk of generated outputs.
+
+**Scores:** 0.0 (Low Risk), 0.5 (Medium Risk), or 1.0 (High Risk). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+### summarization_quality
+
+Calculates the summarization quality of the generated outputs.
+
+**Scores:** 0.0 (Not Good), 0.5 (Somewhat Good), or 1.0 (Good). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs (typically containing the text to summarize)
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import summarization_quality
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+prompts = ["Summarize this article: [long article text]..."]
+summaries = ["This article discusses the key findings of recent AI research."]
+
+result = summarization_quality(summaries, prompts, eval_model=eval_client)
+print(result.metric_values)  # [1.0]
+```
+
+### system_prompt_adherence
+
+Calculates how well the system prompt is followed when the LLM generates outputs.
+
+**Scores:** 0.0 (Not Adherent), 0.5 (Partially Adherent), or 1.0 (Adherent). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `system_prompts` (list[str] | str): The system prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import system_prompt_adherence
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+system_prompts = ["You are a helpful assistant that always responds in haiku form."]
+prompts = ["What is AI?"]
+outputs = [
+    "Artificial mind\nLearning from vast data streams\nMachines that think now"
+]
+
+result = system_prompt_adherence(
+    outputs,
+    prompts,
+    system_prompts,
+    eval_model=eval_client
+)
+print(result.metric_values)  # [1.0]
+```
+
+### user_frustration
+
+Calculates user frustration from the interaction history between the user and the LLM.
+
+**Scores:** 0.0 (Not Frustrated), 0.5 (Somewhat Frustrated), or 1.0 (Frustrated). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `history` (list[str] | str): The interaction history between the user and the LLM
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import user_frustration
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+prompts = ["I asked you three times already!"]
+history = [
+    "User: What time is it?\nAssistant: I don't know.\nUser: Can you tell me the time?\nAssistant: I can't access that information."
+]
+
+result = user_frustration(prompts, history, eval_model=eval_client)
+print(result.metric_values)  # [1.0] - High frustration
+```
+
+## Importing Metrics
+
+For English text, import directly from `langcheck.metrics`:
+
+```python
+from langcheck.metrics import (
+    answer_relevance,
+    answer_safety,
+    adult_content,
+    harmful_activity,
+    hate_speech,
+    personal_data_leakage,
+    summarization_quality,
+    system_prompt_adherence,
+    user_frustration
+)
+```
+
+For Japanese:
+
+```python
+from langcheck.metrics.ja import answer_relevance, answer_safety
+```
+
+## Use Cases
+
+### Question Answering
+
+Evaluate if answers are relevant and safe:
+
+```python
+from langcheck.metrics import answer_relevance, answer_safety
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+relevance = answer_relevance(outputs, prompts, eval_model=eval_client)
+safety = answer_safety(outputs, prompts, eval_model=eval_client)
+
+for i, (rel, safe) in enumerate(zip(relevance.metric_values, safety.metric_values)):
+    if rel < 0.5:
+        print(f"Answer {i} is not relevant!")
+    if safe < 1.0:
+        print(f"Answer {i} may not be safe!")
+```
+
+### Content Moderation
+
+Detect risky content:
+
+```python
+from langcheck.metrics import (
+    adult_content,
+    harmful_activity,
+    hate_speech,
+    personal_data_leakage
+)
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+# Run all safety metrics
+adult = adult_content(outputs, prompts, eval_model=eval_client)
+harm = harmful_activity(outputs, prompts, eval_model=eval_client)
+hate = hate_speech(outputs, prompts, eval_model=eval_client)
+leakage = personal_data_leakage(outputs, prompts, eval_model=eval_client)
+
+# Flag high-risk outputs
+for i in range(len(outputs)):
+    risks = [
+        adult.metric_values[i],
+        harm.metric_values[i],
+        hate.metric_values[i],
+        leakage.metric_values[i]
+    ]
+    if any(r and r >= 0.5 for r in risks):
+        print(f"Output {i} flagged for moderation")
+```
+
+### System Prompt Compliance
+
+Ensure LLM follows instructions:
+
+```python
+from langcheck.metrics import system_prompt_adherence
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+system_prompts = ["Always be concise. Limit responses to 2 sentences."]
+prompts = ["Explain quantum computing."]
+outputs = ["Quantum computing uses quantum mechanics. It can solve certain problems faster."]
+
+result = system_prompt_adherence(
+    outputs,
+    prompts,
+    system_prompts,
+    eval_model=eval_client
+)
+print(f"Adherence: {result.metric_values[0]}")  # 1.0 - Good adherence
+```
+
+## Note on EvalClient Requirement
+
+All query-based metrics require an EvalClient instance (they cannot run locally). See [Eval Clients](/metrics/eval-clients) for setup instructions.

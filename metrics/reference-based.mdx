@@ -1,0 +1,229 @@
+---
+title: 'Reference-Based Metrics'
+description: 'Metrics that compare generated outputs against reference outputs'
+---
+
+Reference-based metrics require a ground truth output (a "reference") to compare LLM outputs against. These metrics are useful when you have human-written answers or expected outputs to compare against.
+
+## Available Metrics
+
+### semantic_similarity
+
+Calculates the semantic similarities between the generated outputs and the reference outputs using cosine similarity of embeddings.
+
+**Scores:** Float values between [-1, 1], typically ranging between 0 and 1 where 0 is minimum similarity and 1 is maximum similarity.
+
+**Languages:** EN, JA, DE, ZH
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `reference_outputs` (list[str] | str): The reference output(s)
+- `prompts` (list[str] | str | None): Optional prompts used to generate the outputs
+- `eval_model` (str | EvalClient): Evaluation model to use ('local' or EvalClient instance). Default: 'local'
+
+**Returns:** `MetricValue[float]`
+
+**Example:**
+```python
+from langcheck.metrics import semantic_similarity
+
+generated_outputs = ["The cat is sitting on the mat."]
+reference_outputs = ["The cat sat on the mat."]
+
+result = semantic_similarity(generated_outputs, reference_outputs)
+print(result.metric_values)  # [0.96]
+```
+
+**With OpenAI embeddings:**
+```python
+from langcheck.metrics import semantic_similarity
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+result = semantic_similarity(
+    generated_outputs,
+    reference_outputs,
+    eval_model=eval_client
+)
+```
+
+### rouge1
+
+Calculates the F1 metrics of the ROUGE-1 scores between generated and reference outputs. Evaluates the overlap of unigrams (single tokens).
+
+**Scores:** Float values between [0, 1], where 0 is no overlap and 1 is complete overlap.
+
+**Languages:** EN, JA, DE, ZH
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `reference_outputs` (list[str] | str): The reference output(s)
+- `prompts` (list[str] | str | None): Optional prompts
+
+**Returns:** `MetricValue[float]`
+
+**Example:**
+```python
+from langcheck.metrics import rouge1
+
+generated = ["The cat is on the mat"]
+reference = ["A cat is on a mat"]
+
+result = rouge1(generated, reference)
+print(result.metric_values)  # [0.857]
+```
+
+### rouge2
+
+Calculates the F1 metrics of the ROUGE-2 scores. Evaluates the overlap of bigrams (two adjacent tokens).
+
+**Scores:** Float values between [0, 1], where 0 is no overlap and 1 is complete overlap.
+
+**Languages:** EN, JA, DE, ZH
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `reference_outputs` (list[str] | str): The reference output(s)
+- `prompts` (list[str] | str | None): Optional prompts
+
+**Returns:** `MetricValue[float]`
+
+**Example:**
+```python
+from langcheck.metrics import rouge2
+
+generated = ["The cat is on the mat"]
+reference = ["A cat is on a mat"]
+
+result = rouge2(generated, reference)
+print(result.metric_values)  # [0.6]
+```
+
+### rougeL
+
+Calculates the F1 metrics of the ROUGE-L scores. Evaluates the longest common subsequence (LCS) between generated and reference outputs.
+
+**Scores:** Float values between [0, 1], where 0 means the LCS is empty and 1 means the outputs are identical.
+
+**Languages:** EN, JA, DE, ZH
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `reference_outputs` (list[str] | str): The reference output(s)
+- `prompts` (list[str] | str | None): Optional prompts
+
+**Returns:** `MetricValue[float]`
+
+**Example:**
+```python
+from langcheck.metrics import rougeL
+
+generated = ["The quick brown fox jumps over the lazy dog"]
+reference = ["The fast brown fox leaps over the sleepy dog"]
+
+result = rougeL(generated, reference)
+print(result.metric_values)  # [0.667]
+```
+
+### exact_match
+
+Checks if the generated outputs exactly match the reference outputs.
+
+**Scores:** Binary 0 or 1 values, where 1 indicates an exact match.
+
+**Languages:** All
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `reference_outputs` (list[str] | str): The reference output(s)
+- `prompts` (list[str] | str | None): Optional prompts
+
+**Returns:** `MetricValue[int]`
+
+**Example:**
+```python
+from langcheck.metrics import exact_match
+
+generated = ["Paris", "London", "Berlin"]
+reference = ["Paris", "Rome", "Berlin"]
+
+result = exact_match(generated, reference)
+print(result.metric_values)  # [1, 0, 1]
+```
+
+### answer_correctness
+
+Calculates the correctness of the generated outputs compared to reference outputs in the context of the given prompts.
+
+**Scores:** 0.0 (Incorrect), 0.5 (Partially Correct), or 1.0 (Correct). May also be `None` if it could not be computed.
+
+**Languages:** EN, JA
+
+**Parameters:**
+- `generated_outputs` (list[str] | str): The model generated output(s) to evaluate
+- `reference_outputs` (list[str] | str): The reference output(s)
+- `prompts` (list[str] | str): The prompts used to generate the outputs
+- `eval_model` (EvalClient): The EvalClient instance for evaluation
+
+**Returns:** `MetricValue[float | None]`
+
+**Example:**
+```python
+from langcheck.metrics import answer_correctness
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+generated = ["Paris is the capital of France."]
+reference = ["The capital of France is Paris."]
+prompts = ["What is the capital of France?"]
+
+result = answer_correctness(
+    generated,
+    reference,
+    prompts,
+    eval_model=eval_client
+)
+print(result.metric_values)  # [1.0]
+```
+
+## Importing Metrics
+
+For English text, import directly from `langcheck.metrics`:
+
+```python
+from langcheck.metrics import semantic_similarity, rouge1, rouge2, rougeL
+from langcheck.metrics import exact_match, answer_correctness
+```
+
+For other languages:
+
+```python
+# Japanese
+from langcheck.metrics.ja import semantic_similarity, answer_correctness
+
+# German
+from langcheck.metrics.de import semantic_similarity, rouge1
+
+# Chinese
+from langcheck.metrics.zh import semantic_similarity
+```
+
+## Use Cases
+
+Reference-based metrics are ideal for:
+
+- **Question Answering**: Compare LLM answers to known correct answers
+- **Translation**: Evaluate translated text against reference translations
+- **Summarization**: Check if summaries capture key information from reference summaries
+- **Content Generation**: Validate generated content matches expected output
+
+## ROUGE Metrics Explained
+
+ROUGE (Recall-Oriented Understudy for Gisting Evaluation) metrics measure the overlap between generated and reference text:
+
+- **ROUGE-1**: Counts matching unigrams (individual words)
+- **ROUGE-2**: Counts matching bigrams (consecutive word pairs)
+- **ROUGE-L**: Measures the longest common subsequence
+
+Higher ROUGE scores indicate better overlap, but don't necessarily capture semantic similarity. Use `semantic_similarity` for meaning-based comparison.

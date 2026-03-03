@@ -1,0 +1,398 @@
+---
+title: German Metrics
+description: API reference for German language metrics in langcheck.metrics.de
+---
+
+## Overview
+
+German metrics are available from `langcheck.metrics.de`. They provide evaluation capabilities optimized for German text.
+
+```python
+from langcheck.metrics import de
+
+# Reference-free metrics
+result = de.fluency(["Das ist ein gut geschriebener Satz."])
+result = de.toxicity(["Das ist eine freundliche Nachricht."])
+result = de.sentiment(["Ich liebe dieses Produkt!"])
+
+# Reference-based metrics
+result = de.semantic_similarity(
+    generated_outputs=["Die Katze saß."],
+    reference_outputs=["Die Katze saß auf der Matte."]
+)
+```
+
+<Note>
+  German language support requires additional dependencies. Install with:
+  ```bash
+  pip install langcheck[de]
+  ```
+</Note>
+
+## Reference-Free Text Quality
+
+### fluency()
+
+Calculates fluency scores for German text.
+
+```python
+from langcheck.metrics.de import fluency
+
+result = fluency(
+    generated_outputs=["Das ist ein gut geschriebener Satz."],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Fluency scores between 0 (low fluency) and 1 (high fluency)
+</ResponseField>
+
+### toxicity()
+
+Calculates toxicity scores for German text.
+
+```python
+from langcheck.metrics.de import toxicity
+
+result = toxicity(
+    generated_outputs=["Das ist eine freundliche Nachricht."],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Toxicity scores between 0 (no toxicity) and 1 (high toxicity)
+</ResponseField>
+
+### sentiment()
+
+Calculates sentiment scores for German text.
+
+```python
+from langcheck.metrics.de import sentiment
+
+result = sentiment(
+    generated_outputs=["Ich liebe dieses Produkt!"],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model: `"local"` or an `EvalClient` instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Sentiment scores: 0 (negative), 0.5 (neutral), 1 (positive)
+</ResponseField>
+
+### ai_disclaimer_similarity()
+
+Measures similarity to AI disclaimer language in German.
+
+```python
+from langcheck.metrics.de import ai_disclaimer_similarity
+
+result = ai_disclaimer_similarity(
+    generated_outputs=["Als KI-Sprachmodell kann ich nicht..."],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str" default="local">
+  Must be `"local"`
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  Similarity scores between 0 (no disclaimer) and 1 (strong disclaimer)
+</ResponseField>
+
+### flesch_reading_ease()
+
+Calculates Flesch Reading Ease for German text.
+
+```python
+from langcheck.metrics.de import flesch_reading_ease
+
+result = flesch_reading_ease(
+    generated_outputs=["Die Katze saß auf der Matte."]
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  Reading ease scores (higher = easier to read)
+</ResponseField>
+
+### flesch_kincaid_grade()
+
+Calculates Flesch-Kincaid Grade Level for German text.
+
+```python
+from langcheck.metrics.de import flesch_kincaid_grade
+
+result = flesch_kincaid_grade(
+    generated_outputs=["Die Katze saß auf der Matte."]
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The model generated output(s) to evaluate
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  Grade level scores
+</ResponseField>
+
+## Reference-Based Text Quality
+
+### semantic_similarity()
+
+Calculates semantic similarity for German text.
+
+```python
+from langcheck.metrics.de import semantic_similarity
+
+result = semantic_similarity(
+    generated_outputs=["Die Katze saß auf der Matte."],
+    reference_outputs=["Eine Katze saß auf einer Matte."],
+    eval_model="local"
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ParamField path="eval_model" type="str | EvalClient" default="local">
+  Evaluation model
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Similarity scores between 0 (different) and 1 (identical)
+</ResponseField>
+
+### rouge1(), rouge2(), rougeL()
+
+ROUGE metrics for German text.
+
+```python
+from langcheck.metrics.de import rouge1, rouge2, rougeL
+
+generated = ["Der schnelle braune Fuchs"]
+reference = ["Der schnelle braune Fuchs springt über den faulen Hund"]
+
+r1 = rouge1(generated, reference)
+r2 = rouge2(generated, reference)
+rl = rougeL(generated, reference)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str" required>
+  The reference output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional metadata)
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float]">
+  ROUGE F1 scores between 0 and 1
+</ResponseField>
+
+## Source-Based Text Quality
+
+### factual_consistency()
+
+Checks factual consistency for German text.
+
+```python
+from langcheck.metrics.de import factual_consistency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+result = factual_consistency(
+    generated_outputs=["Der Eiffelturm steht in Paris."],
+    sources=["Paris ist die Heimat des berühmten Eiffelturms."],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="sources" type="list[str] | str" required>
+  The source document(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None">
+  The prompts (optional)
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Consistency scores: 0.0 (inconsistent), 0.5 (partially), 1.0 (consistent)
+</ResponseField>
+
+### context_relevance()
+
+Evaluates context relevance for German.
+
+```python
+from langcheck.metrics.de import context_relevance
+
+result = context_relevance(
+    sources=["Paris ist die Hauptstadt von Frankreich."],
+    prompts=["Was ist die Hauptstadt von Frankreich?"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="sources" type="list[str] | str" required>
+  The source document(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str" required>
+  The prompts/queries
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Relevance scores: 0.0 (not relevant), 0.5 (partially), 1.0 (highly relevant)
+</ResponseField>
+
+## Query-Based Text Quality
+
+### answer_relevance()
+
+Evaluates answer relevance for German.
+
+```python
+from langcheck.metrics.de import answer_relevance
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+result = answer_relevance(
+    generated_outputs=["Paris ist die Hauptstadt von Frankreich."],
+    prompts=["Was ist die Hauptstadt von Frankreich?"],
+    eval_model=eval_client
+)
+```
+
+<ParamField path="generated_outputs" type="list[str] | str" required>
+  The generated output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str" required>
+  The prompts/questions
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  An EvalClient instance
+</ParamField>
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Relevance scores between 0 (not relevant) and 1 (highly relevant)
+</ResponseField>
+
+## Utilities
+
+### DeTokenizer
+
+Tokenizer for German text.
+
+```python
+from langcheck.metrics.de import DeTokenizer
+
+tokenizer = DeTokenizer()
+tokens = tokenizer.tokenize("Das ist ein Test.")
+```
+
+### Translate
+
+Translation utility for German text.
+
+```python
+from langcheck.metrics.de import Translate
+
+translator = Translate()
+text_en = translator.translate("Das ist ein Test.", target_lang="en")
+```
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Overview of metrics API
+- [English Metrics](/api/metrics/english) - English language metrics
+- [Japanese Metrics](/api/metrics/japanese) - Japanese language metrics
+- [Chinese Metrics](/api/metrics/chinese) - Chinese language metrics

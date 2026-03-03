@@ -1,0 +1,452 @@
+---
+title: 'Eval Clients'
+description: 'Using remote LLM APIs for metric evaluation'
+---
+
+By default, LangCheck uses local models for evaluation. However, you can configure metrics to use remote LLM APIs (OpenAI, Anthropic, Google Gemini, etc.) which may provide better evaluation quality for complex text.
+
+## Available Eval Clients
+
+### OpenAIEvalClient
+
+Use OpenAI's models for evaluation.
+
+**Example:**
+```python
+import os
+from langcheck.metrics import semantic_similarity
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# Option 1: Set API key as environment variable
+os.environ["OPENAI_API_KEY"] = 'YOUR_OPENAI_API_KEY'
+eval_client = OpenAIEvalClient()
+
+generated = ["The cat is sitting on the mat."]
+reference = ["The cat sat on the mat."]
+
+result = semantic_similarity(
+    generated,
+    reference,
+    eval_model=eval_client
+)
+```
+
+**Option 2: Pass OpenAI client directly:**
+```python
+from openai import OpenAI
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+openai_client = OpenAI(api_key='YOUR_OPENAI_API_KEY')
+eval_client = OpenAIEvalClient(openai_client=openai_client)
+
+result = semantic_similarity(
+    generated,
+    reference,
+    eval_model=eval_client
+)
+```
+
+**With specific model:**
+```python
+eval_client = OpenAIEvalClient(
+    text_model_name="gpt-4",
+    embedding_model_name="text-embedding-3-large"
+)
+```
+
+### AzureOpenAIEvalClient
+
+Use Azure OpenAI Service for evaluation.
+
+**Example:**
+```python
+import os
+from langcheck.metrics import fluency
+from langcheck.metrics.eval_clients import AzureOpenAIEvalClient
+
+# Option 1: Set environment variables
+os.environ["AZURE_OPENAI_API_KEY"] = 'YOUR_AZURE_OPENAI_API_KEY'
+os.environ["OPENAI_API_VERSION"] = 'YOUR_OPENAI_API_VERSION'
+os.environ["AZURE_OPENAI_ENDPOINT"] = 'YOUR_AZURE_OPENAI_ENDPOINT'
+
+# Specify model deployment names
+eval_client = AzureOpenAIEvalClient(
+    text_model_name='YOUR_TEXT_MODEL_DEPLOYMENT_NAME',
+    embedding_model_name='YOUR_EMBEDDING_MODEL_DEPLOYMENT_NAME'
+)
+
+generated = ["The cat sits on the mat."]
+result = fluency(generated, eval_model=eval_client)
+```
+
+**Option 2: Pass AzureOpenAI client directly:**
+```python
+from openai import AzureOpenAI
+from langcheck.metrics.eval_clients import AzureOpenAIEvalClient
+
+azure_client = AzureOpenAI(
+    api_key='YOUR_AZURE_OPENAI_API_KEY',
+    api_version='YOUR_OPENAI_API_VERSION',
+    azure_endpoint='YOUR_AZURE_OPENAI_ENDPOINT'
+)
+
+eval_client = AzureOpenAIEvalClient(
+    text_model_name='YOUR_TEXT_MODEL_DEPLOYMENT_NAME',
+    azure_openai_client=azure_client
+)
+
+result = fluency(generated, eval_model=eval_client)
+```
+
+### AnthropicEvalClient
+
+Use Anthropic's Claude models for evaluation.
+
+**Example:**
+```python
+import os
+from langcheck.metrics import toxicity
+from langcheck.metrics.eval_clients import AnthropicEvalClient
+
+# Set API key
+os.environ["ANTHROPIC_API_KEY"] = 'YOUR_ANTHROPIC_API_KEY'
+
+eval_client = AnthropicEvalClient()
+
+generated = ["This is a helpful response."]
+result = toxicity(generated, eval_model=eval_client)
+```
+
+**With specific model:**
+```python
+eval_client = AnthropicEvalClient(
+    text_model_name="claude-3-opus-20240229"
+)
+```
+
+### GeminiEvalClient
+
+Use Google's Gemini models for evaluation.
+
+**Example:**
+```python
+import os
+from langcheck.metrics import answer_relevance
+from langcheck.metrics.eval_clients import GeminiEvalClient
+
+# Set API key
+os.environ["GOOGLE_API_KEY"] = 'YOUR_GOOGLE_API_KEY'
+
+eval_client = GeminiEvalClient()
+
+prompts = ["What is the capital of France?"]
+outputs = ["Paris is the capital of France."]
+
+result = answer_relevance(outputs, prompts, eval_model=eval_client)
+```
+
+**With specific model:**
+```python
+eval_client = GeminiEvalClient(
+    text_model_name="gemini-1.5-pro"
+)
+```
+
+### LiteLLMEvalClient
+
+Use any LLM provider supported by LiteLLM.
+
+**Example:**
+```python
+from langcheck.metrics import factual_consistency
+from langcheck.metrics.eval_clients import LiteLLMEvalClient
+
+# Works with any LiteLLM-supported provider
+eval_client = LiteLLMEvalClient(
+    text_model_name="anthropic/claude-3-sonnet-20240229"
+)
+
+sources = ["Paris is the capital of France."]
+outputs = ["The capital of France is Paris."]
+
+result = factual_consistency(outputs, sources, eval_model=eval_client)
+```
+
+**Examples with different providers:**
+```python
+# Anthropic
+eval_client = LiteLLMEvalClient(
+    text_model_name="anthropic/claude-3-opus-20240229"
+)
+
+# Cohere
+eval_client = LiteLLMEvalClient(
+    text_model_name="command-r-plus"
+)
+
+# Hugging Face
+eval_client = LiteLLMEvalClient(
+    text_model_name="huggingface/meta-llama/Llama-2-70b-chat-hf"
+)
+```
+
+### LlamaEvalClient
+
+Use models from Llama (Meta) for evaluation.
+
+**Example:**
+```python
+from langcheck.metrics import sentiment
+from langcheck.metrics.eval_clients import LlamaEvalClient
+
+eval_client = LlamaEvalClient()
+
+outputs = ["I love this product!"]
+result = sentiment(outputs, eval_model=eval_client)
+```
+
+### OpenRouterEvalClient
+
+Use OpenRouter to access multiple LLM providers.
+
+**Example:**
+```python
+import os
+from langcheck.metrics import fluency
+from langcheck.metrics.eval_clients import OpenRouterEvalClient
+
+os.environ["OPENROUTER_API_KEY"] = 'YOUR_OPENROUTER_API_KEY'
+
+eval_client = OpenRouterEvalClient(
+    text_model_name="openai/gpt-4"
+)
+
+outputs = ["The quick brown fox jumps."]
+result = fluency(outputs, eval_model=eval_client)
+```
+
+### PrometheusEvalClient
+
+Use Prometheus models for evaluation.
+
+**Example:**
+```python
+from langcheck.metrics import answer_relevance
+from langcheck.metrics.eval_clients import PrometheusEvalClient
+
+eval_client = PrometheusEvalClient()
+
+prompts = ["What is machine learning?"]
+outputs = ["ML is a type of AI that learns from data."]
+
+result = answer_relevance(outputs, prompts, eval_model=eval_client)
+```
+
+## Choosing an Eval Client
+
+### For Most Use Cases
+
+**OpenAIEvalClient** is recommended for:
+- Best evaluation quality
+- Wide availability
+- Good documentation
+- Embedding support for semantic similarity
+
+### For Cost Optimization
+
+**LiteLLMEvalClient** allows you to:
+- Compare different providers
+- Use cheaper models for simpler evaluations
+- Switch providers without changing code
+
+### For Privacy
+
+**Local models** (default) keep all data on your machine:
+```python
+# No EvalClient needed - uses local models
+result = toxicity(outputs, eval_model='local')
+```
+
+### For Enterprise
+
+**AzureOpenAIEvalClient** provides:
+- Enterprise SLAs
+- Data residency options
+- Private deployments
+
+## Common Patterns
+
+### Using Different Models for Different Metrics
+
+```python
+from langcheck.metrics import toxicity, semantic_similarity
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# Use GPT-4 for complex evaluations
+complex_eval = OpenAIEvalClient(text_model_name="gpt-4")
+
+# Use GPT-3.5-turbo for simpler evaluations (cheaper)
+simple_eval = OpenAIEvalClient(text_model_name="gpt-3.5-turbo")
+
+tox_result = toxicity(outputs, eval_model=simple_eval)
+sim_result = semantic_similarity(
+    generated,
+    reference,
+    eval_model=complex_eval
+)
+```
+
+### Fallback to Local
+
+```python
+from langcheck.metrics import fluency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+try:
+    eval_client = OpenAIEvalClient()
+    result = fluency(outputs, eval_model=eval_client)
+except Exception as e:
+    print(f"Remote evaluation failed: {e}")
+    print("Falling back to local evaluation")
+    result = fluency(outputs, eval_model='local')
+```
+
+### Batch Processing with Rate Limiting
+
+```python
+import time
+from langcheck.metrics import answer_relevance
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+# Process in batches to avoid rate limits
+batch_size = 10
+for i in range(0, len(outputs), batch_size):
+    batch_outputs = outputs[i:i+batch_size]
+    batch_prompts = prompts[i:i+batch_size]
+    
+    result = answer_relevance(
+        batch_outputs,
+        batch_prompts,
+        eval_model=eval_client
+    )
+    
+    # Process results...
+    
+    # Wait between batches
+    if i + batch_size < len(outputs):
+        time.sleep(1)
+```
+
+### Environment-Based Configuration
+
+```python
+import os
+from langcheck.metrics import toxicity
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# Use remote evaluation in production, local in development
+if os.getenv("ENV") == "production":
+    eval_client = OpenAIEvalClient()
+    result = toxicity(outputs, eval_model=eval_client)
+else:
+    result = toxicity(outputs, eval_model='local')
+```
+
+## Token Usage Tracking
+
+EvalClient-based metrics track token usage:
+
+```python
+from langcheck.metrics import factual_consistency
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+sources = ["Paris is in France."] * 100
+outputs = ["The capital of France is Paris."] * 100
+
+result = factual_consistency(outputs, sources, eval_model=eval_client)
+
+# Check token usage
+if result.token_usage:
+    print(f"Prompt tokens: {result.token_usage.prompt_tokens}")
+    print(f"Completion tokens: {result.token_usage.completion_tokens}")
+    print(f"Total tokens: {result.token_usage.total_tokens}")
+```
+
+## API Key Management
+
+### Using Environment Variables
+
+```bash
+# .env file
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+AZURE_OPENAI_API_KEY=...
+OPENAI_API_VERSION=2023-05-15
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+```
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+# Now you can create eval clients without passing API keys
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+eval_client = OpenAIEvalClient()
+```
+
+### Using Secrets Manager
+
+```python
+import boto3
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+from openai import OpenAI
+
+# Get API key from AWS Secrets Manager
+secrets = boto3.client('secretsmanager')
+api_key = secrets.get_secret_value(SecretId='openai-api-key')['SecretString']
+
+openai_client = OpenAI(api_key=api_key)
+eval_client = OpenAIEvalClient(openai_client=openai_client)
+```
+
+## Importing Eval Clients
+
+```python
+from langcheck.metrics.eval_clients import (
+    OpenAIEvalClient,
+    AzureOpenAIEvalClient,
+    AnthropicEvalClient,
+    GeminiEvalClient,
+    LiteLLMEvalClient,
+    LlamaEvalClient,
+    OpenRouterEvalClient,
+    PrometheusEvalClient,
+)
+```
+
+## Local vs Remote Trade-offs
+
+| Aspect | Local Models | Remote LLMs |
+|--------|-------------|-------------|
+| **Quality** | Good for basic metrics | Better for complex evaluations |
+| **Cost** | Free | Pay per API call |
+| **Speed** | Fast (no network) | Slower (network latency) |
+| **Privacy** | All data stays local | Data sent to provider |
+| **Setup** | Automatic download | API key required |
+| **Availability** | Always available | Depends on API uptime |
+| **Customization** | Limited | Use custom templates |
+
+## Best Practices
+
+1. **Start with local models** for prototyping and testing
+2. **Use remote LLMs** for production evaluations requiring high accuracy
+3. **Cache results** to avoid redundant API calls
+4. **Monitor costs** by tracking token usage
+5. **Handle errors gracefully** with fallbacks to local evaluation
+6. **Batch requests** when possible to optimize API usage
+7. **Use environment variables** for API key management

@@ -1,80 +1,306 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with LangCheck in minutes
 ---
 
-## Get started in three steps
+# Quickstart
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+LangCheck evaluates text produced by LLMs. Since it works with simple lists of strings, it integrates seamlessly with any LLM library.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  LangCheck runs anywhere, but its built-in visualizations look best in a notebook (e.g. [Jupyter](https://jupyter.org), [VS Code](https://code.visualstudio.com/docs/datascience/jupyter-notebooks), [Colab](https://colab.research.google.com)).
 </Note>
+
+## Evaluate Text with Metrics
+
+Let's start with a simple example evaluating the fluency of LLM-generated text:
+
+<Steps>
+  <Step title="Generate or collect text">
+    LangCheck works with any LLM library since it just takes a list of strings:
+    
+    ```python
+    import langcheck
+
+    # Generate text with any LLM library
+    generated_outputs = [
+        'Black cat the',
+        'The black cat is.',
+        'The black cat is sitting',
+        'The big black cat is sitting on the fence',
+        'Usually, the big black cat is sitting on the old wooden fence.'
+    ]
+    ```
+  </Step>
+  
+  <Step title="Check text quality">
+    Use any metric function to evaluate the text:
+    
+    ```python
+    # Check text quality and get results as a DataFrame
+    langcheck.metrics.fluency(generated_outputs)
+    ```
+    
+    The output is displayed as a DataFrame showing the metric value for each input.
+  </Step>
+</Steps>
+
+## Set Thresholds and Assertions
+
+LangCheck makes it easy to set quality thresholds and create assertions for testing:
+
+<Steps>
+  <Step title="Set a threshold">
+    Compare metric results against a threshold to see pass/fail results:
+    
+    ```python
+    fluency_values = langcheck.metrics.fluency(generated_outputs)
+    fluency_values > 0.5
+    ```
+    
+    This displays a DataFrame with pass/fail indicators for each text sample.
+  </Step>
+  
+  <Step title="Use assertions in tests">
+    Perfect for unit testing your LLM application:
+    
+    ```python
+    assert fluency_values > 0.5
+    ```
+    
+    The assertion will fail if any of the outputs don't meet the threshold.
+  </Step>
+  
+  <Step title="Work with single strings">
+    Metric functions also accept single strings (useful for guardrails):
+    
+    ```python
+    langcheck.metrics.fluency('The black cat is sitting')
+    ```
+  </Step>
+</Steps>
+
+## Visualize Results
+
+LangCheck comes with built-in, interactive visualizations:
+
+<Tabs>
+  <Tab title="Single Metric Scatter Plot">
+    ```python
+    # Interactive scatter plot of one metric
+    fluency_values = langcheck.metrics.fluency(generated_outputs)
+    fluency_values.scatter()
+    ```
+    
+    This creates an interactive scatter plot where you can hover over points to see the text samples.
+  </Tab>
+  
+  <Tab title="Two Metrics Scatter Plot">
+    ```python
+    # Interactive scatter plot comparing two metrics
+    fluency_values = langcheck.metrics.fluency(generated_outputs)
+    sentiment_values = langcheck.metrics.sentiment(generated_outputs)
+    
+    langcheck.plot.scatter(fluency_values, sentiment_values)
+    ```
+    
+    Explore the relationship between two different metrics.
+  </Tab>
+  
+  <Tab title="Histogram">
+    ```python
+    # Interactive histogram of a single metric
+    fluency_values.histogram()
+    ```
+    
+    View the distribution of metric values across your dataset.
+  </Tab>
+  
+  <Tab title="Export to DataFrame">
+    ```python
+    # Get the underlying DataFrame for custom analysis
+    fluency_values.to_df()
+    (fluency_values > 0.5).to_df()
+    ```
+    
+    Export results to a pandas DataFrame for further analysis.
+  </Tab>
+</Tabs>
+
+## Augment Text for Robustness Testing
+
+Use text augmentations to automatically generate variations and test model robustness:
+
+```python
+prompt = 'write my friend an email inviting her to my birthday party'
+
+# Generate variations of the prompt
+reworded_prompts = langcheck.augment.synonym(prompt, num_perturbations=3)
+typo_prompts = langcheck.augment.keyboard_typo(prompt, num_perturbations=3)
+```
+
+### Test Gender Bias
+
+Evaluate how your model responds to different genders:
+
+```python
+prompts = ['Write a story about a nurse who saves a patient']
+
+# Generate gender variations
+male_prompts = langcheck.augment.gender(prompts, to_gender='male')
+female_prompts = langcheck.augment.gender(prompts, to_gender='female')
+
+# Test your LLM with both versions
+male_outputs = [my_llm_app(prompt) for prompt in male_prompts]
+female_outputs = [my_llm_app(prompt) for prompt in female_prompts]
+
+# Compare sentiment across genders
+langcheck.metrics.sentiment(male_outputs)
+langcheck.metrics.sentiment(female_outputs)
+```
+
+## Common Use Cases
+
+<Tabs>
+  <Tab title="Unit Testing">
+    Write test cases for your LLM application:
+    
+    ```python
+    from langcheck.utils import load_json
+    import json
+
+    # Run the LLM application once to generate text
+    prompts = load_json('test_prompts.json')
+    generated_outputs = [my_llm_app(prompt) for prompt in prompts]
+
+    # Unit tests
+    def test_toxicity(generated_outputs):
+        assert langcheck.metrics.toxicity(generated_outputs) < 0.1
+
+    def test_fluency(generated_outputs):
+        assert langcheck.metrics.fluency(generated_outputs) > 0.9
+
+    def test_json_structure(generated_outputs):
+        assert langcheck.metrics.validation_fn(
+            generated_outputs, lambda x: 'myKey' in json.loads(x)).all()
+    ```
+    
+    **With reference outputs:**
+    
+    ```python
+    reference_outputs = load_json('reference_outputs.json')
+
+    def test_semantic_similarity(generated_outputs, reference_outputs):
+        assert langcheck.metrics.semantic_similarity(
+            generated_outputs, reference_outputs) > 0.9
+
+    def test_rouge2_similarity(generated_outputs, reference_outputs):
+        assert langcheck.metrics.rouge2(
+            generated_outputs, reference_outputs) > 0.9
+    ```
+  </Tab>
+  
+  <Tab title="Monitoring">
+    Monitor the quality of your LLM outputs in production:
+    
+    ```python
+    production_outputs = load_json('llm_logs_2023_10_02.json')['outputs']
+    production_prompts = load_json('llm_logs_2023_10_02.json')['prompts']
+
+    # Evaluate and display toxic outputs in production logs
+    langcheck.metrics.toxicity(production_outputs) > 0.75
+    langcheck.metrics.toxicity(production_prompts) > 0.75
+
+    # Plot relationship between prompt and response toxicity
+    langcheck.plot.scatter(
+        langcheck.metrics.toxicity(production_prompts),
+        langcheck.metrics.toxicity(production_outputs)
+    )
+
+    # Check structured output format
+    langcheck.metrics.is_json_array(production_outputs)
+    ```
+  </Tab>
+  
+  <Tab title="Guardrails">
+    Filter LLM outputs before they reach users:
+    
+    ```python
+    # Get a candidate output from the LLM app
+    raw_output = my_llm_app(random_user_prompt)
+
+    # Filter the output before it reaches the user
+    while langcheck.metrics.contains_any_strings(raw_output, blacklist_words).any():
+        raw_output = my_llm_app(random_user_prompt)
+    ```
+    
+    **Detect hallucinations in RAG applications:**
+    
+    ```python
+    # Get a candidate output and retrieved context from the RAG app
+    raw_output, context = my_rag_app(random_user_prompt)
+
+    # Fact check the output against the context
+    if langcheck.metrics.factual_consistency(raw_output, context) < 0.5:
+        final_output = (
+            "WARNING: Detected a potential hallucination in the LLM's output. " +
+            "Please fact-check the output below!\n" +
+            raw_output
+        )
+    ```
+  </Tab>
+</Tabs>
+
+## Available Metrics
+
+LangCheck includes several types of metrics:
+
+<CardGroup cols={2}>
+  <Card title="Reference-Free Metrics" icon="wand-magic-sparkles">
+    Evaluate quality without reference outputs:
+    - `toxicity()` - Detect toxic content
+    - `sentiment()` - Measure sentiment
+    - `fluency()` - Check text fluency
+    - `ai_disclaimer_similarity()` - Detect AI disclaimers
+  </Card>
+  
+  <Card title="Reference-Based Metrics" icon="code-compare">
+    Compare against ground truth:
+    - `semantic_similarity()` - Semantic similarity
+    - `rouge2()` - ROUGE-2 overlap
+  </Card>
+  
+  <Card title="Source-Based Metrics" icon="book">
+    Check consistency with sources:
+    - `factual_consistency()` - Verify facts against sources
+  </Card>
+  
+  <Card title="Query-Based Metrics" icon="message-question">
+    Evaluate relevance to prompts:
+    - `answer_relevance()` - Check answer relevance
+  </Card>
+  
+  <Card title="Text Structure Metrics" icon="list-check">
+    Validate output format:
+    - `is_float()` - Check if text is a float
+    - `is_json_object()` - Validate JSON objects
+    - `is_json_array()` - Validate JSON arrays
+  </Card>
+  
+  <Card title="Pairwise Metrics" icon="scale-balanced">
+    Compare two outputs:
+    - `pairwise_comparison()` - Compare output quality
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Explore All Metrics" icon="chart-line" href="https://langcheck.readthedocs.io/en/latest/metrics.html">
+    Learn about all available metrics and their language support
+  </Card>
+  
+  <Card title="View Tutorials" icon="book-open" href="https://langcheck.readthedocs.io/en/latest/tutorials.html">
+    Dive deeper with comprehensive tutorials
+  </Card>
+</CardGroup>

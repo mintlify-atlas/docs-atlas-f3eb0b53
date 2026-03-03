@@ -1,0 +1,676 @@
+---
+title: 'Evaluation Workflow'
+description: 'Best practices for evaluating LLM outputs with LangCheck'
+icon: 'diagram-project'
+---
+
+## Overview
+
+Effective LLM evaluation requires a systematic workflow that fits your use case. This guide covers best practices for structuring evaluations, choosing between local and remote models, and implementing batch evaluation patterns.
+
+## The Evaluation Workflow
+
+<Steps>
+  <Step title="Generate LLM outputs">
+    Run your LLM application to produce outputs for evaluation
+    
+    ```python
+    prompts = ["What is machine learning?", "Explain neural networks"]
+    generated_outputs = [my_llm_app(prompt) for prompt in prompts]
+    ```
+  </Step>
+  
+  <Step title="Select appropriate metrics">
+    Choose metrics based on available data and quality criteria
+    
+    ```python
+    import langcheck
+    
+    # Select metrics for your use case
+    toxicity_scores = langcheck.metrics.toxicity(generated_outputs)
+    fluency_scores = langcheck.metrics.fluency(generated_outputs)
+    ```
+  </Step>
+  
+  <Step title="Set thresholds">
+    Define acceptable quality ranges
+    
+    ```python
+    # Apply thresholds
+    safe_outputs = toxicity_scores < 0.1
+    fluent_outputs = fluency_scores > 0.7
+    ```
+  </Step>
+  
+  <Step title="Analyze results">
+    Visualize and investigate failures
+    
+    ```python
+    # View results
+    print(f"Safety pass rate: {safe_outputs.pass_rate:.1%}")
+    safe_outputs.scatter()
+    
+    # Get failing examples
+    df = safe_outputs.to_df()
+    failures = df[df['threshold_result'] == False]
+    ```
+  </Step>
+  
+  <Step title="Iterate and improve">
+    Fix issues and re-evaluate
+  </Step>
+</Steps>
+
+## Use Case Patterns
+
+### Unit Testing
+
+Use LangCheck metrics to create automated tests for your LLM application:
+
+```python
+import langcheck
+from langcheck.utils import load_json
+
+# Load test data
+prompts = load_json('test_prompts.json')
+reference_outputs = load_json('reference_outputs.json')
+
+# Generate outputs once
+generated_outputs = [my_llm_app(prompt) for prompt in prompts]
+
+def test_fluency():
+    """Ensure outputs are fluent."""
+    assert langcheck.metrics.fluency(generated_outputs) > 0.7
+
+def test_no_toxicity():
+    """Ensure outputs are safe."""
+    assert langcheck.metrics.toxicity(generated_outputs) < 0.1
+
+def test_semantic_similarity():
+    """Ensure outputs match expected meaning."""
+    similarity = langcheck.metrics.semantic_similarity(
+        generated_outputs,
+        reference_outputs
+    )
+    assert similarity > 0.8
+
+def test_json_structure():
+    """Ensure structured outputs are valid JSON."""
+    assert langcheck.metrics.is_json_object(generated_outputs).all()
+```
+
+<Tip>
+Generate outputs once and reuse them across multiple test functions to save time and ensure consistency.
+</Tip>
+
+### Monitoring
+
+Track LLM quality in production by evaluating logs:
+
+```python
+import langcheck
+from langcheck.utils import load_json
+
+# Load production logs
+logs = load_json('llm_logs_2024_03_03.json')
+production_outputs = logs['outputs']
+production_prompts = logs['prompts']
+
+# Evaluate quality metrics
+toxicity_scores = langcheck.metrics.toxicity(production_outputs)
+fluency_scores = langcheck.metrics.fluency(production_outputs)
+
+# Display toxic outputs for review
+toxic_outputs = toxicity_scores > 0.75
+print(f"Found {sum(toxic_outputs.threshold_results)} toxic outputs")
+print(toxic_outputs.to_df())
+
+# Visualize trends
+langcheck.plot.scatter(toxicity_scores, fluency_scores)
+
+# Check for validation failures
+json_check = langcheck.metrics.is_json_object(production_outputs)
+print(f"JSON validation pass rate: {json_check.all() * 100:.1f}%")
+```
+
+### Guardrails
+
+Filter LLM outputs in real-time before showing them to users:
+
+```python
+import langcheck
+
+def safe_llm_response(user_prompt, blacklist_words):
+    """Generate LLM response with safety guardrails."""
+    
+    # Get candidate output
+    raw_output = my_llm_app(user_prompt)
+    
+    # Check for blacklisted words
+    max_retries = 3
+    for _ in range(max_retries):
+        if not langcheck.metrics.contains_any_strings(raw_output, blacklist_words).any():
+            break
+        raw_output = my_llm_app(user_prompt)
+    
+    # Check toxicity
+    if langcheck.metrics.toxicity(raw_output).metric_values[0] > 0.5:
+        return "I apologize, but I can't provide that response."
+    
+    return raw_output
+```
+
+### RAG Evaluation
+
+Evaluate Retrieval Augmented Generation systems:
+
+```python
+import langcheck
+
+def evaluate_rag_system(query, retrieved_docs, llm_response):
+    """Comprehensive RAG evaluation."""
+    
+    # Check if retrieved docs are relevant to query
+    context_relevance = langcheck.metrics.context_relevance(
+        sources=retrieved_docs,
+        prompts=query
+    )
+    
+    # Check if response is factually consistent with docs
+    factual_consistency = langcheck.metrics.factual_consistency(
+        generated_outputs=llm_response,
+        sources=retrieved_docs
+    )
+    
+    # Check if response answers the query
+    answer_relevance = langcheck.metrics.answer_relevance(
+        generated_outputs=llm_response,
+        prompts=query
+    )
+    
+    return {
+        'context_relevance': context_relevance.metric_values[0],
+        'factual_consistency': factual_consistency.metric_values[0],
+        'answer_relevance': answer_relevance.metric_values[0]
+    }
+
+# Example usage
+query = "What is the capital of France?"
+docs = retrieve_documents(query)
+response = generate_answer(query, docs)
+
+metrics = evaluate_rag_system(query, docs, response)
+print(f"Evaluation results: {metrics}")
+```
+
+## Local vs Remote Models
+
+LangCheck supports two model types for computing metrics:
+
+### Local Models (Default)
+
+By default, LangCheck downloads and runs models locally:
+
+```python
+import langcheck
+
+# Uses local models (default)
+fluency_scores = langcheck.metrics.fluency(generated_outputs)
+toxicity_scores = langcheck.metrics.toxicity(generated_outputs)
+similarity = langcheck.metrics.semantic_similarity(
+    generated_outputs,
+    reference_outputs
+)
+```
+
+**Advantages:**
+- No API keys required
+- No per-request costs
+- Fast for large batches
+- Data privacy (runs offline)
+- Consistent performance
+
+**Limitations:**
+- Requires disk space for models
+- May be less accurate for complex evaluations
+- Limited context window for some metrics
+
+### Remote LLMs (EvalClient)
+
+For more sophisticated evaluations, use remote LLMs via `EvalClient`:
+
+#### OpenAI
+
+```python
+import os
+from langcheck.metrics import semantic_similarity
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# Option 1: Set API key as environment variable
+os.environ["OPENAI_API_KEY"] = 'your-api-key'
+eval_client = OpenAIEvalClient()
+
+# Option 2: Pass OpenAI client directly
+from openai import OpenAI
+openai_client = OpenAI(api_key='your-api-key')
+eval_client = OpenAIEvalClient(openai_client=openai_client)
+
+# Use with metrics
+similarity = semantic_similarity(
+    generated_outputs,
+    reference_outputs,
+    eval_model=eval_client
+)
+```
+
+#### Azure OpenAI
+
+```python
+import os
+from langcheck.metrics import fluency
+from langcheck.metrics.eval_clients import AzureOpenAIEvalClient
+
+# Set environment variables
+os.environ["AZURE_OPENAI_API_KEY"] = 'your-api-key'
+os.environ["OPENAI_API_VERSION"] = 'your-api-version'
+os.environ["AZURE_OPENAI_ENDPOINT"] = 'your-endpoint'
+
+# Create client with model deployment names
+eval_client = AzureOpenAIEvalClient(
+    text_model_name='your-text-model-deployment',
+    embedding_model_name='your-embedding-model-deployment'
+)
+
+fluency_scores = fluency(
+    generated_outputs,
+    eval_model=eval_client
+)
+```
+
+#### Anthropic Claude
+
+```python
+import os
+from langcheck.metrics import sentiment
+from langcheck.metrics.eval_clients import AnthropicEvalClient
+
+os.environ["ANTHROPIC_API_KEY"] = 'your-api-key'
+eval_client = AnthropicEvalClient()
+
+sentiment_scores = sentiment(
+    generated_outputs,
+    eval_model=eval_client
+)
+```
+
+#### Google Gemini
+
+```python
+import os
+from langcheck.metrics import factual_consistency
+from langcheck.metrics.eval_clients import GeminiEvalClient
+
+os.environ["GOOGLE_API_KEY"] = 'your-api-key'
+eval_client = GeminiEvalClient()
+
+consistency = factual_consistency(
+    generated_outputs,
+    sources,
+    eval_model=eval_client
+)
+```
+
+**Advantages:**
+- More accurate for complex tasks
+- Larger context windows
+- Better at nuanced judgments
+- Can provide detailed explanations
+
+**Limitations:**
+- Requires API keys and setup
+- Per-request costs
+- Slower for large batches
+- Requires internet connection
+
+### Choosing Between Local and Remote
+
+| Factor | Use Local | Use Remote |
+|--------|-----------|------------|
+| **Budget** | No API budget | Have API budget |
+| **Speed** | Large batches (100+) | Small batches (&lt;100) |
+| **Accuracy** | Simple metrics (toxicity, structure) | Complex judgments (correctness, relevance) |
+| **Privacy** | Sensitive data | Public/non-sensitive data |
+| **Setup** | Minimal setup preferred | API keys available |
+
+<Note>
+You can mix local and remote models - use local for simple metrics (toxicity, structure validation) and remote for complex judgments (answer correctness, pairwise comparison).
+</Note>
+
+## Batch Evaluation
+
+Evaluate multiple outputs efficiently:
+
+### Basic Batch Pattern
+
+```python
+import langcheck
+
+# Generate all outputs first
+prompts = load_test_prompts()
+generated_outputs = [my_llm_app(p) for p in prompts]
+
+# Evaluate all at once (most efficient)
+toxicity = langcheck.metrics.toxicity(generated_outputs)
+fluency = langcheck.metrics.fluency(generated_outputs)
+sentiment = langcheck.metrics.sentiment(generated_outputs)
+
+# View combined results
+df = toxicity.to_df()
+df['fluency'] = fluency.metric_values
+df['sentiment'] = sentiment.metric_values
+print(df)
+```
+
+### Batch with References
+
+```python
+import langcheck
+
+# Load test data
+prompts = load_json('prompts.json')
+references = load_json('references.json')
+sources = load_json('sources.json')
+
+# Generate outputs
+generated_outputs = [my_llm_app(p, s) for p, s in zip(prompts, sources)]
+
+# Batch evaluation
+results = {
+    'semantic_similarity': langcheck.metrics.semantic_similarity(
+        generated_outputs, references
+    ),
+    'factual_consistency': langcheck.metrics.factual_consistency(
+        generated_outputs, sources
+    ),
+    'answer_relevance': langcheck.metrics.answer_relevance(
+        generated_outputs, prompts
+    ),
+}
+
+# Check all metrics pass
+for metric_name, metric_value in results.items():
+    pass_rate = (metric_value > 0.7).pass_rate
+    print(f"{metric_name}: {pass_rate:.1%} pass rate")
+```
+
+### Progressive Evaluation
+
+For expensive metrics, evaluate in stages:
+
+```python
+import langcheck
+
+# Stage 1: Fast, cheap checks
+toxicity = langcheck.metrics.toxicity(generated_outputs)
+json_valid = langcheck.metrics.is_json_object(generated_outputs)
+
+# Filter to valid outputs
+df = toxicity.to_df()
+df['json_valid'] = json_valid.metric_values
+valid_outputs = df[
+    (df['metric_values'] < 0.1) &  # Low toxicity
+    (df['json_valid'] == 1)         # Valid JSON
+]
+
+# Stage 2: Expensive evaluation only on valid outputs
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+filtered_outputs = valid_outputs['generated_outputs'].tolist()
+filtered_prompts = valid_outputs['prompts'].tolist()
+
+answer_relevance = langcheck.metrics.answer_relevance(
+    filtered_outputs,
+    filtered_prompts,
+    eval_model=OpenAIEvalClient()
+)
+```
+
+### Parallel Evaluation
+
+For very large datasets, evaluate in parallel:
+
+```python
+import langcheck
+from concurrent.futures import ThreadPoolExecutor
+
+def evaluate_batch(outputs_batch):
+    """Evaluate a batch of outputs."""
+    return {
+        'toxicity': langcheck.metrics.toxicity(outputs_batch),
+        'fluency': langcheck.metrics.fluency(outputs_batch)
+    }
+
+# Split into batches
+batch_size = 100
+output_batches = [
+    generated_outputs[i:i+batch_size]
+    for i in range(0, len(generated_outputs), batch_size)
+]
+
+# Evaluate in parallel
+with ThreadPoolExecutor(max_workers=4) as executor:
+    results = list(executor.map(evaluate_batch, output_batches))
+
+# Combine results
+all_toxicity = [r['toxicity'] for r in results]
+all_fluency = [r['fluency'] for r in results]
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Generate outputs once, evaluate multiple times">
+    Cache generated outputs to avoid redundant LLM calls:
+    
+    ```python
+    # Good: Generate once
+    outputs = [my_llm_app(p) for p in prompts]
+    toxicity = langcheck.metrics.toxicity(outputs)
+    fluency = langcheck.metrics.fluency(outputs)
+    
+    # Bad: Generate multiple times
+    toxicity = langcheck.metrics.toxicity([my_llm_app(p) for p in prompts])
+    fluency = langcheck.metrics.fluency([my_llm_app(p) for p in prompts])
+    ```
+  </Accordion>
+  
+  <Accordion title="Start with local models, upgrade selectively">
+    Use local models by default, remote only when needed:
+    
+    ```python
+    # Fast local checks
+    toxicity = langcheck.metrics.toxicity(outputs)  # Local
+    fluency = langcheck.metrics.fluency(outputs)    # Local
+    
+    # Complex evaluation with remote LLM
+    from langcheck.metrics.eval_clients import OpenAIEvalClient
+    correctness = langcheck.metrics.answer_correctness(
+        outputs, references, prompts,
+        eval_model=OpenAIEvalClient()
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Use progressive filtering for expensive metrics">
+    Apply cheap checks first, expensive checks only on passing outputs:
+    
+    ```python
+    # Stage 1: Cheap structure validation
+    valid_json = langcheck.metrics.is_json_object(outputs)
+    
+    # Stage 2: Fast quality checks
+    passing_outputs = [o for o, v in zip(outputs, valid_json.metric_values) if v]
+    toxicity = langcheck.metrics.toxicity(passing_outputs)
+    
+    # Stage 3: Expensive LLM evaluation only on good candidates
+    final_outputs = [o for o, t in zip(passing_outputs, toxicity.metric_values) if t < 0.1]
+    correctness = langcheck.metrics.answer_correctness(
+        final_outputs, references, prompts,
+        eval_model=OpenAIEvalClient()
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Visualize results to find patterns">
+    Use scatter plots to understand metric relationships:
+    
+    ```python
+    toxicity = langcheck.metrics.toxicity(outputs)
+    fluency = langcheck.metrics.fluency(outputs)
+    
+    # Find outputs that are fluent but toxic
+    langcheck.plot.scatter(fluency, toxicity)
+    ```
+  </Accordion>
+  
+  <Accordion title="Set thresholds based on your use case">
+    Different applications have different quality requirements:
+    
+    ```python
+    # Customer-facing: Strict thresholds
+    assert toxicity < 0.05
+    assert fluency > 0.9
+    
+    # Internal tool: Relaxed thresholds
+    assert toxicity < 0.3
+    assert fluency > 0.6
+    ```
+  </Accordion>
+  
+  <Accordion title="Save evaluation results for tracking">
+    Keep a history of evaluations to track improvements:
+    
+    ```python
+    import json
+    from datetime import datetime
+    
+    results = {
+        'date': datetime.now().isoformat(),
+        'model': 'gpt-4',
+        'metrics': {
+            'toxicity': toxicity.metric_values,
+            'fluency': fluency.metric_values
+        },
+        'pass_rates': {
+            'toxicity': (toxicity < 0.1).pass_rate,
+            'fluency': (fluency > 0.7).pass_rate
+        }
+    }
+    
+    with open(f'eval_results_{datetime.now().date()}.json', 'w') as f:
+        json.dump(results, f)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Example: Complete Evaluation Pipeline
+
+Here's a complete evaluation pipeline combining multiple best practices:
+
+```python
+import langcheck
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+from langcheck.utils import load_json
+import pandas as pd
+
+def evaluate_llm_system(test_file):
+    """Complete evaluation pipeline for an LLM system."""
+    
+    # 1. Load test data
+    test_data = load_json(test_file)
+    prompts = test_data['prompts']
+    references = test_data['references']
+    sources = test_data['sources']
+    
+    # 2. Generate outputs once
+    print("Generating outputs...")
+    generated_outputs = [
+        my_rag_app(prompt, source)
+        for prompt, source in zip(prompts, sources)
+    ]
+    
+    # 3. Fast local checks
+    print("Running local evaluations...")
+    toxicity = langcheck.metrics.toxicity(generated_outputs)
+    fluency = langcheck.metrics.fluency(generated_outputs)
+    json_valid = langcheck.metrics.is_json_object(generated_outputs)
+    
+    # 4. Apply thresholds
+    safe = toxicity < 0.1
+    fluent = fluency > 0.7
+    
+    # 5. Filter to passing outputs for expensive checks
+    df = pd.DataFrame({
+        'prompt': prompts,
+        'output': generated_outputs,
+        'reference': references,
+        'source': sources,
+        'toxicity': toxicity.metric_values,
+        'fluency': fluency.metric_values,
+        'safe': safe.threshold_results,
+        'fluent': fluent.threshold_results
+    })
+    
+    passing = df[df['safe'] & df['fluent']]
+    
+    # 6. Expensive remote evaluation on passing outputs
+    if len(passing) > 0:
+        print(f"Running remote evaluation on {len(passing)} passing outputs...")
+        eval_client = OpenAIEvalClient()
+        
+        answer_relevance = langcheck.metrics.answer_relevance(
+            passing['output'].tolist(),
+            passing['prompt'].tolist(),
+            eval_model=eval_client
+        )
+        
+        factual_consistency = langcheck.metrics.factual_consistency(
+            passing['output'].tolist(),
+            passing['source'].tolist(),
+            eval_model=eval_client
+        )
+        
+        passing['answer_relevance'] = answer_relevance.metric_values
+        passing['factual_consistency'] = factual_consistency.metric_values
+    
+    # 7. Generate report
+    print("\n=== Evaluation Results ===")
+    print(f"Total outputs: {len(df)}")
+    print(f"Safe: {safe.pass_rate:.1%}")
+    print(f"Fluent: {fluent.pass_rate:.1%}")
+    print(f"Passed initial checks: {len(passing)} ({len(passing)/len(df):.1%})")
+    
+    if len(passing) > 0:
+        print(f"Answer relevance > 0.7: {(passing['answer_relevance'] > 0.7).mean():.1%}")
+        print(f"Factual consistency > 0.8: {(passing['factual_consistency'] > 0.8).mean():.1%}")
+    
+    # 8. Save results
+    df.to_json('evaluation_results.json', orient='records')
+    print("\nResults saved to evaluation_results.json")
+    
+    return df
+
+# Run evaluation
+results = evaluate_llm_system('test_data.json')
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Metrics Overview" icon="chart-line" href="/concepts/metrics-overview">
+    Learn about the MetricValue object and its methods
+  </Card>
+  <Card title="Metric Types" icon="grid" href="/concepts/metric-types">
+    Explore all available metric types and when to use them
+  </Card>
+</CardGroup>

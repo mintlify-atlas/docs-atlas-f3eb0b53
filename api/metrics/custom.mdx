@@ -1,0 +1,428 @@
+---
+title: Custom Metrics
+description: API reference for creating custom evaluation metrics with custom_evaluator() and custom_pairwise_evaluator()
+---
+
+## Overview
+
+LangCheck allows you to create custom evaluation metrics using LLM-based evaluators with your own criteria and scoring rubrics. Use `custom_evaluator()` for single-output evaluation and `custom_pairwise_evaluator()` for comparing two outputs.
+
+```python
+from langcheck.metrics import custom_evaluator
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+result = custom_evaluator(
+    generated_outputs=["The sky is blue."],
+    prompts=["Tell me about the sky"],
+    eval_model=eval_client,
+    metric_name="factual_accuracy",
+    score_map={"Accurate": 1.0, "Inaccurate": 0.0},
+    template_path="my_template.j2",
+    language="en"
+)
+```
+
+## custom_evaluator()
+
+Create a custom metric that evaluates generated outputs using a Jinja2 prompt template and score mapping.
+
+### Function Signature
+
+```python
+def custom_evaluator(
+    generated_outputs: list[str] | str | None,
+    prompts: list[str] | str | None,
+    sources: list[str] | str | None,
+    reference_outputs: list[str] | str | None,
+    eval_model: EvalClient,
+    metric_name: str,
+    score_map: dict[str, float],
+    template_path: str | None,
+    language: str,
+    template_str: str | None = None,
+    *,
+    additional_inputs: dict[str, IndividualInputType] | None = None,
+    additional_input_name_to_prompt_var_mapping: dict[str, str] | None = None,
+) -> MetricValue[float | None]
+```
+
+### Parameters
+
+<ParamField path="generated_outputs" type="list[str] | str | None" required>
+  The model generated output(s) to evaluate. Can be None if not needed by your template.
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None" required>
+  The prompts used to generate the outputs. Can be None if not needed.
+</ParamField>
+
+<ParamField path="sources" type="list[str] | str | None" required>
+  The source document(s). Can be None if not needed.
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str | None" required>
+  The reference output(s). Can be None if not needed.
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  The EvalClient instance to use for evaluation (e.g., OpenAIEvalClient, AnthropicEvalClient)
+</ParamField>
+
+<ParamField path="metric_name" type="str" required>
+  The name for your custom metric (e.g., "factual_accuracy", "helpfulness")
+</ParamField>
+
+<ParamField path="score_map" type="dict[str, float]" required>
+  Dictionary mapping assessment labels to numeric scores. For example:
+  ```python
+  {"Good": 1.0, "Neutral": 0.5, "Bad": 0.0}
+  ```
+</ParamField>
+
+<ParamField path="template_path" type="str | None" required>
+  Path to a Jinja2 template file (.j2) containing the evaluation prompt. Required if `template_str` is not provided.
+</ParamField>
+
+<ParamField path="language" type="str" required>
+  Language code for the evaluator: `"en"`, `"ja"`, or `"de"`
+</ParamField>
+
+<ParamField path="template_str" type="str | None">
+  Jinja2 template string as an alternative to `template_path`. If provided, `template_path` is ignored.
+</ParamField>
+
+<ParamField path="additional_inputs" type="dict[str, IndividualInputType] | None">
+  Additional custom inputs beyond the standard ones (generated_outputs, prompts, sources, reference_outputs)
+</ParamField>
+
+<ParamField path="additional_input_name_to_prompt_var_mapping" type="dict[str, str] | None">
+  Maps additional input names to variable names in the Jinja2 template
+</ParamField>
+
+### Returns
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  A MetricValue object with scores based on your score_map, with explanations from the LLM evaluator
+</ResponseField>
+
+### Template Variables
+
+Your Jinja2 template can use these variables (not all are required):
+
+- `gen_output`: The generated output
+- `user_query`: The prompt
+- `src`: The source text
+- `ref_output`: The reference output
+- Custom variables from `additional_inputs` (via mapping)
+
+### Example Usage
+
+#### Basic Example
+
+```python
+from langcheck.metrics import custom_evaluator
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient(model_name="gpt-4")
+
+# Create a custom helpfulness metric
+result = custom_evaluator(
+    generated_outputs=[
+        "Paris is the capital of France.",
+        "I don't know."
+    ],
+    prompts=[
+        "What is the capital of France?",
+        "What is the capital of France?"
+    ],
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="helpfulness",
+    score_map={"Helpful": 1.0, "Somewhat Helpful": 0.5, "Not Helpful": 0.0},
+    template_path="helpfulness_template.j2",
+    language="en"
+)
+
+print(result.metric_values)  # [1.0, 0.0]
+print(result.explanations)  # LLM explanations for each score
+```
+
+#### Template Example (helpfulness_template.j2)
+
+```jinja2
+You are evaluating the helpfulness of an AI assistant's response.
+
+User Query: {{ user_query }}
+Assistant Response: {{ gen_output }}
+
+Evaluate the helpfulness of the response on the following scale:
+- Helpful: The response directly answers the question with accurate information
+- Somewhat Helpful: The response provides some relevant information but is incomplete
+- Not Helpful: The response does not answer the question or provides no useful information
+
+Provide your assessment as one of: Helpful, Somewhat Helpful, Not Helpful
+
+Assessment:
+```
+
+#### Using template_str Instead of File
+
+```python
+template = """
+Evaluate if this response is factually accurate.
+
+Response: {{ gen_output }}
+
+Assessment (Accurate/Inaccurate):
+"""
+
+result = custom_evaluator(
+    generated_outputs=["The Earth is flat."],
+    prompts=None,
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="accuracy",
+    score_map={"Accurate": 1.0, "Inaccurate": 0.0},
+    template_path=None,
+    template_str=template,
+    language="en"
+)
+```
+
+#### Using Additional Inputs
+
+```python
+result = custom_evaluator(
+    generated_outputs=["The product costs $50."],
+    prompts=["What is the price?"],
+    sources=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="price_accuracy",
+    score_map={"Correct": 1.0, "Incorrect": 0.0},
+    template_str="""
+    Expected price: {{ expected_price }}
+    Generated output: {{ gen_output }}
+    
+    Is the price correct? (Correct/Incorrect):
+    """,
+    language="en",
+    additional_inputs={"expected_price": ["$50"]},
+    additional_input_name_to_prompt_var_mapping={"expected_price": "expected_price"}
+)
+```
+
+## custom_pairwise_evaluator()
+
+Create a custom metric that compares two model outputs (A vs B) to determine which is better.
+
+### Function Signature
+
+```python
+def custom_pairwise_evaluator(
+    generated_outputs_a: list[str] | str | None,
+    generated_outputs_b: list[str] | str | None,
+    prompts: list[str] | str | None,
+    sources_a: list[str] | str | None,
+    sources_b: list[str] | str | None,
+    reference_outputs: list[str] | str | None,
+    eval_model: EvalClient,
+    metric_name: str,
+    score_map: dict[str, float],
+    template_path: str | None,
+    language: str,
+    enforce_consistency: bool = True,
+    template_str: str | None = None,
+    *,
+    additional_inputs: dict[
+        str,
+        IndividualInputType | tuple[IndividualInputType, IndividualInputType],
+    ] | None = None,
+    additional_input_name_to_prompt_var_mapping: dict[str, str] | None = None,
+) -> MetricValue[float | None]
+```
+
+### Parameters
+
+<ParamField path="generated_outputs_a" type="list[str] | str | None" required>
+  Model A's generated output(s)
+</ParamField>
+
+<ParamField path="generated_outputs_b" type="list[str] | str | None" required>
+  Model B's generated output(s)
+</ParamField>
+
+<ParamField path="prompts" type="list[str] | str | None" required>
+  The prompts. Can be None if not needed.
+</ParamField>
+
+<ParamField path="sources_a" type="list[str] | str | None" required>
+  Source document(s) for Model A. Can be None.
+</ParamField>
+
+<ParamField path="sources_b" type="list[str] | str | None" required>
+  Source document(s) for Model B. Can be None.
+</ParamField>
+
+<ParamField path="reference_outputs" type="list[str] | str | None" required>
+  Reference output(s). Can be None.
+</ParamField>
+
+<ParamField path="eval_model" type="EvalClient" required>
+  The EvalClient instance for evaluation
+</ParamField>
+
+<ParamField path="metric_name" type="str" required>
+  Name for your custom metric
+</ParamField>
+
+<ParamField path="score_map" type="dict[str, float]" required>
+  Dictionary mapping assessments to scores. For pairwise comparison, typically:
+  ```python
+  {"Response A": 0.0, "Response B": 1.0, "Tie": 0.5}
+  ```
+  Ensure the score map is symmetric if using `enforce_consistency=True`.
+</ParamField>
+
+<ParamField path="template_path" type="str | None" required>
+  Path to Jinja2 template file. Required if `template_str` is not provided.
+</ParamField>
+
+<ParamField path="language" type="str" required>
+  Language code: `"en"`, `"ja"`, or `"de"`
+</ParamField>
+
+<ParamField path="enforce_consistency" type="bool" default="True">
+  If True, only return a score if swapping Model A and Model B produces consistent results (eliminates position bias)
+</ParamField>
+
+<ParamField path="template_str" type="str | None">
+  Jinja2 template string as alternative to file
+</ParamField>
+
+<ParamField path="additional_inputs" type="dict">
+  Additional inputs (can be individual or tuples for A/B variants)
+</ParamField>
+
+<ParamField path="additional_input_name_to_prompt_var_mapping" type="dict[str, str] | None">
+  Maps additional input names to template variables
+</ParamField>
+
+### Returns
+
+<ResponseField name="Returns" type="MetricValue[float | None]">
+  Pairwise comparison scores based on your score_map
+</ResponseField>
+
+### Template Variables for Pairwise
+
+Your Jinja2 template can use:
+
+- `gen_output_a`: Model A's generated output
+- `gen_output_b`: Model B's generated output
+- `user_query`: The prompt
+- `src_a`: Source text for Model A
+- `src_b`: Source text for Model B
+- `ref_output`: Reference output
+- Custom variables from `additional_inputs`
+
+### Example Usage
+
+#### Basic Pairwise Comparison
+
+```python
+from langcheck.metrics import custom_pairwise_evaluator
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient(model_name="gpt-4")
+
+result = custom_pairwise_evaluator(
+    generated_outputs_a=["Paris is a city."],
+    generated_outputs_b=["Paris is the capital of France."],
+    prompts=["Tell me about Paris."],
+    sources_a=None,
+    sources_b=None,
+    reference_outputs=None,
+    eval_model=eval_client,
+    metric_name="informativeness",
+    score_map={"Response A": 0.0, "Response B": 1.0, "Tie": 0.5},
+    template_path="compare_informativeness.j2",
+    language="en",
+    enforce_consistency=True
+)
+
+print(result.metric_values)  # [1.0] - Response B is more informative
+```
+
+#### Pairwise Template Example (compare_informativeness.j2)
+
+```jinja2
+Compare the informativeness of two responses.
+
+User Query: {{ user_query }}
+
+Response A: {{ gen_output_a }}
+Response B: {{ gen_output_b }}
+
+Which response provides more informative and detailed information?
+- Response A: If Response A is more informative
+- Response B: If Response B is more informative
+- Tie: If both are equally informative
+
+Your assessment (Response A, Response B, or Tie):
+```
+
+## Best Practices
+
+### Template Design
+
+1. **Use ASCII assessment labels**: LLMs sometimes behave inconsistently with non-ASCII characters in the final assessment, even if the rest of the prompt is in another language.
+
+```python
+# Good
+score_map = {"Good": 1.0, "Bad": 0.0}
+
+# Avoid
+score_map = {"良い": 1.0, "悪い": 0.0}  # May cause issues
+```
+
+2. **Be specific in criteria**: Clearly define what each assessment level means in your template.
+
+3. **Keep assessments simple**: Use 2-4 assessment levels rather than many fine-grained levels.
+
+### Score Mapping
+
+For pairwise evaluators with `enforce_consistency=True`, ensure your score map is symmetric:
+
+```python
+# Symmetric (correct for enforce_consistency=True)
+score_map = {"Response A": 0.0, "Response B": 1.0, "Tie": 0.5}
+# Swapping A and B: {"Response B": 1.0, "Response A": 0.0, "Tie": 0.5}
+# Results in inverse scores: 1.0 - score
+```
+
+### Error Handling
+
+The metric may return `None` for individual scores if:
+- The LLM's response doesn't match any key in the score_map
+- The evaluation request fails
+- `enforce_consistency=True` and A/B swap gives inconsistent results
+
+```python
+result = custom_evaluator(...)
+
+# Check for None values
+if None in result.metric_values:
+    print("Some evaluations failed")
+    valid_scores = [s for s in result.metric_values if s is not None]
+```
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Overview of metrics API
+- [EvalClients](/api/eval-clients) - Available evaluation client implementations
+- [English Metrics](/api/metrics/english) - Built-in English metrics as examples

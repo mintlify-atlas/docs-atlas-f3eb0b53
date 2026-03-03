@@ -1,0 +1,184 @@
+---
+title: Monitoring
+description: Monitor the quality of your LLM outputs in production with LangCheck metrics
+---
+
+You can monitor the quality of your LLM outputs in production with LangCheck metrics. Just save your production logs and pass them into LangCheck for evaluation.
+
+## Quick Example
+
+Simply load your production outputs and evaluate them:
+
+```python
+from langcheck.utils import load_json
+import langcheck
+
+production_outputs = load_json('llm_logs_2023_10_02.json')['outputs']
+
+# Evaluate and display toxic outputs in production logs
+langcheck.metrics.toxicity(production_outputs) > 0.75
+
+# Or if your app outputs structured text
+langcheck.metrics.is_json_array(production_outputs)
+```
+
+## Monitoring Multiple Aspects
+
+You can evaluate both prompts and outputs to understand your production traffic:
+
+```python
+from langcheck.utils import load_json
+import langcheck
+
+production_outputs = load_json('llm_logs_2023_10_02.json')['outputs']
+production_prompts = load_json('llm_logs_2023_10_02.json')['prompts']
+
+# Evaluate and display toxic outputs in production logs
+langcheck.metrics.toxicity(production_outputs) > 0.75
+langcheck.metrics.toxicity(production_prompts) > 0.75
+
+# Plot relationship between prompt toxicity and response toxicity
+langcheck.plot.scatter(
+    langcheck.metrics.toxicity(production_prompts),
+    langcheck.metrics.toxicity(production_outputs)
+)
+
+# Or if your app outputs structured text
+langcheck.metrics.is_json_array(production_outputs)
+```
+
+## Detecting Quality Issues Over Time
+
+Monitor trends and detect degradation in your LLM's performance:
+
+```python
+import langcheck
+from langcheck.utils import load_json
+
+# Load logs from different time periods
+week1_outputs = load_json('llm_logs_week1.json')['outputs']
+week2_outputs = load_json('llm_logs_week2.json')['outputs']
+
+# Compare fluency over time
+week1_fluency = langcheck.metrics.fluency(week1_outputs)
+week2_fluency = langcheck.metrics.fluency(week2_outputs)
+
+# Visualize changes
+week1_fluency.histogram()
+week2_fluency.histogram()
+```
+
+## Identifying Problematic Outputs
+
+Use thresholds to filter and identify specific problematic outputs:
+
+```python
+import langcheck
+from langcheck.utils import load_json
+
+production_outputs = load_json('llm_logs_2023_10_02.json')['outputs']
+
+# Get results with threshold
+toxicity_results = langcheck.metrics.toxicity(production_outputs) > 0.75
+
+# Convert to DataFrame to analyze failing outputs
+failing_outputs_df = toxicity_results.to_df()
+failing_outputs = failing_outputs_df[failing_outputs_df['pass'] == False]
+
+# Review the specific outputs that failed
+print(failing_outputs)
+```
+
+## Monitoring Structured Outputs
+
+If your application generates structured data (JSON, specific formats), monitor format compliance:
+
+```python
+import langcheck
+from langcheck.utils import load_json
+
+production_outputs = load_json('llm_logs_2023_10_02.json')['outputs']
+
+# Check if outputs are valid JSON arrays
+json_validity = langcheck.metrics.is_json_array(production_outputs)
+
+# Check if outputs are valid JSON objects
+object_validity = langcheck.metrics.is_json_object(production_outputs)
+
+# Check if numeric outputs are in valid range
+numeric_validity = langcheck.metrics.is_float(production_outputs, min=0, max=100)
+```
+
+## Visualizing Production Metrics
+
+LangCheck includes interactive visualizations to help you understand your production data:
+
+```python
+import langcheck
+
+production_outputs = ['output1', 'output2', 'output3']
+
+# Interactive scatter plot of one metric
+fluency_values = langcheck.metrics.fluency(production_outputs)
+fluency_values.scatter()
+
+# Interactive histogram
+fluency_values.histogram()
+
+# Compare two metrics
+sentiment_values = langcheck.metrics.sentiment(production_outputs)
+langcheck.plot.scatter(fluency_values, sentiment_values)
+```
+
+## Common Monitoring Patterns
+
+### Pattern 1: Daily Quality Check
+
+```python
+import langcheck
+from langcheck.utils import load_json
+from datetime import datetime
+
+# Load today's logs
+today = datetime.now().strftime('%Y_%m_%d')
+logs = load_json(f'llm_logs_{today}.json')
+outputs = logs['outputs']
+
+# Run quality checks
+toxicity_check = langcheck.metrics.toxicity(outputs) < 0.1
+fluency_check = langcheck.metrics.fluency(outputs) > 0.8
+
+# Alert if thresholds are not met
+if not toxicity_check.all():
+    print(f"ALERT: High toxicity detected in {today}'s logs")
+if not fluency_check.all():
+    print(f"ALERT: Low fluency detected in {today}'s logs")
+```
+
+### Pattern 2: RAG System Monitoring
+
+```python
+import langcheck
+from langcheck.utils import load_json
+
+# Load logs with context
+logs = load_json('rag_logs_2023_10_02.json')
+outputs = logs['outputs']
+contexts = logs['contexts']
+
+# Check for hallucinations
+consistency = langcheck.metrics.factual_consistency(outputs, contexts)
+hallucinations = consistency < 0.5
+
+if hallucinations.any():
+    print(f"WARNING: Detected {hallucinations.sum()} potential hallucinations")
+```
+
+## Best Practices
+
+1. **Store comprehensive logs**: Include prompts, outputs, contexts, and metadata
+2. **Set appropriate thresholds**: Based on your application's requirements and user feedback
+3. **Monitor multiple metrics**: Don't rely on a single metric - use a combination
+4. **Track trends over time**: Look for degradation or improvements
+5. **Investigate outliers**: Review specific failing cases to understand root causes
+6. **Automate alerts**: Set up automated monitoring for critical metrics

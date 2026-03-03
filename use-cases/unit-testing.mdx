@@ -1,0 +1,132 @@
+---
+title: Unit Testing
+description: Write test cases for your LLM application using LangCheck metrics
+---
+
+You can write test cases for your LLM application using LangCheck metrics. LangCheck makes it easy to turn metrics into unit tests with simple assertions.
+
+## Quick Example
+
+It's easy to turn LangCheck metrics into unit tests - just use `assert`:
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+# Turn any metric into a unit test with assert
+assert langcheck.metrics.fluency(generated_outputs) > 0.5
+```
+
+## Testing with Prompts Only
+
+If you only have a list of prompts to test against, you can generate outputs once and then run multiple tests:
+
+```python
+from langcheck.utils import load_json
+import langcheck
+
+# Run the LLM application once to generate text
+prompts = load_json('test_prompts.json')
+generated_outputs = [my_llm_app(prompt) for prompt in prompts]
+
+# Unit tests
+def test_toxicity(generated_outputs):
+    assert langcheck.metrics.toxicity(generated_outputs) < 0.1
+
+def test_fluency(generated_outputs):
+    assert langcheck.metrics.fluency(generated_outputs) > 0.9
+
+def test_json_structure(generated_outputs):
+    assert langcheck.metrics.validation_fn(
+        generated_outputs, lambda x: 'myKey' in json.loads(x)).all()
+```
+
+## Testing with Reference Outputs
+
+If you have reference outputs (ground truth), you can compare predictions against them:
+
+```python
+from langcheck.utils import load_json
+import langcheck
+
+reference_outputs = load_json('reference_outputs.json')
+
+def test_semantic_similarity(generated_outputs, reference_outputs):
+    assert langcheck.metrics.semantic_similarity(
+        generated_outputs, reference_outputs) > 0.9
+
+def test_rouge2_similarity(generated_outputs, reference_outputs):
+    assert langcheck.metrics.rouge2(
+        generated_outputs, reference_outputs) > 0.9
+```
+
+## Using Assertions with Thresholds
+
+LangCheck metrics return special objects that work seamlessly with comparison operators and assertions:
+
+```python
+import langcheck
+
+generated_outputs = ['The black cat is sitting']
+
+# Get the metric value
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+
+# View pass/fail results with a threshold
+fluency_values > 0.5
+
+# Use in assertions for unit tests
+assert fluency_values > 0.5
+```
+
+## Available Metrics for Testing
+
+LangCheck provides several types of metrics you can use in your tests:
+
+### Reference-Free Metrics
+
+These require no ground truth data:
+
+- `toxicity(generated_outputs)` - Detect toxic content
+- `fluency(generated_outputs)` - Check text fluency
+- `sentiment(generated_outputs)` - Measure sentiment
+- `ai_disclaimer_similarity(generated_outputs)` - Detect AI disclaimers
+
+### Reference-Based Metrics
+
+These compare against ground truth outputs:
+
+- `semantic_similarity(generated_outputs, reference_outputs)` - Semantic similarity
+- `rouge2(generated_outputs, reference_outputs)` - ROUGE-2 overlap
+
+### Source-Based Metrics
+
+These compare against source documents:
+
+- `factual_consistency(generated_outputs, sources)` - Check for hallucinations
+
+### Query-Based Metrics
+
+These evaluate based on the input query:
+
+- `answer_relevance(generated_outputs, prompts)` - Check answer relevance
+
+### Text Structure Metrics
+
+These validate output format:
+
+- `is_json_object(generated_outputs)` - Validate JSON objects
+- `is_json_array(generated_outputs)` - Validate JSON arrays
+- `is_float(generated_outputs, min=0, max=None)` - Validate numeric ranges
+
+## Best Practices
+
+1. **Generate outputs once**: Run your LLM application once to generate text, then run multiple tests on the same outputs
+2. **Use appropriate thresholds**: Set thresholds based on your application's requirements
+3. **Combine multiple metrics**: Test different aspects of quality (fluency, toxicity, structure, etc.)
+4. **Test edge cases**: Include prompts that might produce problematic outputs

@@ -1,0 +1,314 @@
+---
+title: Analyzing Metric Results
+description: Work with metric results using DataFrames, thresholds, and filters
+---
+
+LangCheck provides powerful tools for analyzing metric results, including converting to DataFrames, setting thresholds, and filtering results.
+
+## Converting to DataFrames
+
+Every MetricValue can be converted to a pandas DataFrame using the `.to_df()` method, making it easy to analyze and manipulate your results.
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+
+# Convert to DataFrame
+df = fluency_values.to_df()
+print(df)
+```
+
+The DataFrame includes:
+- `generated_outputs`: The text that was evaluated
+- `prompts`: Input prompts (if provided to the metric)
+- `reference_outputs`: Reference text (if provided)
+- `sources`: Source context (if provided)
+- `explanations`: Explanations for the metric scores (when available)
+- `metric_values`: The computed metric scores
+
+### Working with DataFrames
+
+Once you have a DataFrame, you can use all standard pandas operations:
+
+```python
+# Get basic statistics
+print(df['metric_values'].describe())
+
+# Filter for low scores
+low_fluency = df[df['metric_values'] < 0.5]
+print(low_fluency)
+
+# Sort by metric values
+sorted_df = df.sort_values('metric_values', ascending=False)
+print(sorted_df)
+
+# Export to CSV
+df.to_csv('fluency_results.csv', index=False)
+```
+
+## Setting Thresholds
+
+LangCheck supports threshold comparisons using standard Python operators. When you apply a threshold, you get a `MetricValueWithThreshold` object that includes pass/fail information.
+
+### Comparison Operators
+
+All standard comparison operators are supported:
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+
+# Greater than
+fluency_values > 0.5
+
+# Greater than or equal
+fluency_values >= 0.5
+
+# Less than
+fluency_values < 0.8
+
+# Less than or equal
+fluency_values <= 0.8
+
+# Equal to
+fluency_values == 1.0
+
+# Not equal to
+fluency_values != 0.0
+```
+
+### Pass Rate
+
+When you set a threshold, you can check the proportion of data points that pass:
+
+```python
+result = langcheck.metrics.fluency(generated_outputs) > 0.5
+print(f"Pass rate: {result.pass_rate}")
+# Output: Pass rate: 0.6666666666666666 (2 out of 3 passed)
+```
+
+### Threshold Results
+
+Get a list of booleans indicating which data points passed:
+
+```python
+result = langcheck.metrics.fluency(generated_outputs) > 0.5
+print(result.threshold_results)
+# Output: [False, True, True]
+```
+
+### Using Thresholds in Assertions
+
+Thresholds work seamlessly with Python's `assert` statement for testing:
+
+```python
+# Assert that all outputs meet the threshold
+assert langcheck.metrics.fluency(generated_outputs) > 0.5
+
+# Assert that at least one output meets the threshold  
+assert langcheck.metrics.toxicity(generated_outputs) < 0.1
+```
+
+## Filtering and Analysis
+
+Combine DataFrames with thresholds to perform sophisticated analysis.
+
+### Filtering by Threshold
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+result = fluency_values > 0.5
+
+# Get DataFrame and filter
+df = result.to_df()
+failed_outputs = df[df['threshold_result'] == False]
+print(failed_outputs)
+```
+
+### Analyzing Failed Cases
+
+```python
+# Check text quality and get results as a DataFrame
+result = langcheck.metrics.fluency(generated_outputs) > 0.5
+df = result.to_df()
+
+# Examine outputs that failed the threshold
+failed = df[~df['threshold_result']]
+print("Failed outputs:")
+for idx, row in failed.iterrows():
+    print(f"  {row['generated_outputs']}: {row['metric_values']:.2f}")
+```
+
+### Finding Outliers
+
+```python
+df = fluency_values.to_df()
+
+# Find outputs with unusually low scores
+mean_score = df['metric_values'].mean()
+std_score = df['metric_values'].std()
+outliers = df[df['metric_values'] < (mean_score - 2 * std_score)]
+print(outliers)
+```
+
+## Combining Multiple Metrics
+
+Analyze multiple metrics together to gain deeper insights.
+
+### Merging Metric DataFrames
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',  
+    'The big black cat is sitting on the fence'
+]
+
+# Calculate multiple metrics
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+sentiment_values = langcheck.metrics.sentiment(generated_outputs)
+
+# Combine into a single DataFrame
+fluency_df = fluency_values.to_df()
+sentiment_df = sentiment_values.to_df()
+
+# Merge on index
+combined_df = fluency_df.merge(
+    sentiment_df[['metric_values']], 
+    left_index=True, 
+    right_index=True,
+    suffixes=('_fluency', '_sentiment')
+)
+print(combined_df)
+```
+
+### Multi-Metric Analysis
+
+```python
+# Find outputs that fail multiple criteria
+low_fluency = fluency_values < 0.5
+negative_sentiment = sentiment_values < 0
+
+# Combine the boolean results
+fluency_df = low_fluency.to_df()
+sentiment_df = negative_sentiment.to_df()
+
+# Find outputs that fail both criteria
+combined = fluency_df.merge(
+    sentiment_df[['threshold_result']], 
+    left_index=True, 
+    right_index=True,
+    suffixes=('_fluency', '_sentiment')
+)
+
+failed_both = combined[
+    (combined['threshold_result_fluency'] == False) & 
+    (combined['threshold_result_sentiment'] == True)
+]
+print("Outputs that are both low fluency and negative:")
+print(failed_both)
+```
+
+### Correlation Analysis
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+sentiment_values = langcheck.metrics.sentiment(generated_outputs)
+
+# Analyze correlation between metrics
+import pandas as pd
+
+df = pd.DataFrame({
+    'fluency': fluency_values.metric_values,
+    'sentiment': sentiment_values.metric_values
+})
+
+correlation = df['fluency'].corr(df['sentiment'])
+print(f"Correlation between fluency and sentiment: {correlation:.3f}")
+```
+
+## Production Monitoring
+
+Use DataFrames and thresholds to monitor LLM outputs in production.
+
+```python
+from langcheck.utils import load_json
+import langcheck
+
+# Load production outputs
+production_outputs = load_json('llm_logs_2023_10_02.json')['outputs']
+
+# Evaluate and display toxic outputs in production logs
+toxicity_result = langcheck.metrics.toxicity(production_outputs) > 0.75
+df = toxicity_result.to_df()
+
+# Get high-toxicity outputs
+high_toxicity = df[df['threshold_result'] == True]
+print(f"Found {len(high_toxicity)} toxic outputs out of {len(df)} total")
+print(high_toxicity[['generated_outputs', 'metric_values']])
+
+# Save for further investigation
+high_toxicity.to_csv('toxic_outputs_investigation.csv', index=False)
+```
+
+## Advanced DataFrame Operations
+
+### Grouping and Aggregation
+
+```python
+# If you have metadata about your outputs
+df = fluency_values.to_df()
+df['model'] = ['model_a', 'model_a', 'model_b']  # Example metadata
+
+# Compare performance across models
+model_comparison = df.groupby('model')['metric_values'].agg(['mean', 'std', 'min', 'max'])
+print(model_comparison)
+```
+
+### Time Series Analysis
+
+```python
+import pandas as pd
+import langcheck
+
+# Assuming you have timestamps for your outputs
+df = fluency_values.to_df()
+df['timestamp'] = pd.date_range('2024-01-01', periods=len(df), freq='h')
+
+# Analyze trends over time
+df.set_index('timestamp', inplace=True)
+rolling_mean = df['metric_values'].rolling(window=10).mean()
+print(rolling_mean)
+```

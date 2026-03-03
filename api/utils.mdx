@@ -1,0 +1,284 @@
+---
+title: Utilities
+description: API reference for utility functions in langcheck.utils
+---
+
+## Overview
+
+LangCheck provides utility functions for common tasks like loading data files.
+
+```python
+from langcheck.utils import load_json
+
+# Load JSON data
+data = load_json("data/examples.json")
+```
+
+## load_json()
+
+Load a JSON file and return its contents as a Python dictionary or list.
+
+```python
+from langcheck.utils import load_json
+from pathlib import Path
+
+# Load from string path
+data = load_json("data/test_cases.json")
+
+# Load from Path object
+data = load_json(Path("data/test_cases.json"))
+
+# Use the loaded data
+if isinstance(data, dict):
+    prompts = data.get("prompts", [])
+    expected_outputs = data.get("expected_outputs", [])
+elif isinstance(data, list):
+    test_cases = data
+```
+
+### Function Signature
+
+```python
+def load_json(filepath: str | Path) -> dict | list
+```
+
+### Parameters
+
+<ParamField path="filepath" type="str | Path" required>
+  Path to the JSON file to load. Can be a string path or a `pathlib.Path` object.
+</ParamField>
+
+### Returns
+
+<ResponseField name="Returns" type="dict | list">
+  The parsed JSON content as a Python dictionary or list, depending on the JSON file's root structure.
+</ResponseField>
+
+### Exceptions
+
+May raise exceptions for common file and JSON errors:
+
+- `FileNotFoundError`: If the file doesn't exist
+- `json.JSONDecodeError`: If the file contains invalid JSON
+- `PermissionError`: If the file can't be read due to permissions
+
+### Examples
+
+#### Loading Test Cases
+
+```python
+from langcheck.utils import load_json
+from langcheck.metrics import answer_relevance
+
+# Load test cases from JSON
+test_data = load_json("tests/qa_test_cases.json")
+# Format: {"questions": [...], "answers": [...], "expected_relevance": [...]}
+
+result = answer_relevance(
+    generated_outputs=test_data["answers"],
+    prompts=test_data["questions"],
+    eval_model=eval_client
+)
+
+# Compare with expected scores
+for i, (score, expected) in enumerate(zip(result.metric_values, test_data["expected_relevance"])):
+    if abs(score - expected) > 0.2:  # Allow some tolerance
+        print(f"Test case {i} failed: got {score}, expected {expected}")
+```
+
+#### Loading Evaluation Datasets
+
+```python
+from langcheck.utils import load_json
+from langcheck.metrics import factual_consistency
+
+# Load a dataset with sources and outputs
+dataset = load_json("data/rag_eval_dataset.json")
+# Format: [
+#   {"source": "...", "output": "...", "prompt": "..."},
+#   ...
+# ]
+
+sources = [item["source"] for item in dataset]
+outputs = [item["output"] for item in dataset]
+prompts = [item["prompt"] for item in dataset]
+
+result = factual_consistency(
+    generated_outputs=outputs,
+    sources=sources,
+    prompts=prompts,
+    eval_model=eval_client
+)
+
+print(f"Average consistency: {sum(result.metric_values) / len(result.metric_values):.2f}")
+```
+
+#### Loading Configuration
+
+```python
+from langcheck.utils import load_json
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+# Load evaluation configuration
+config = load_json("config/eval_config.json")
+# Format: {
+#   "model": "gpt-4",
+#   "temperature": 0.0,
+#   "metrics": ["fluency", "toxicity", "relevance"],
+#   "thresholds": {"fluency": 0.7, "toxicity": 0.3}
+# }
+
+# Create eval client from config
+eval_client = OpenAIEvalClient(
+    model_name=config["model"],
+    temperature=config.get("temperature", 0.0)
+)
+
+# Use config for evaluation
+from langcheck.metrics import fluency, toxicity
+
+outputs = [...]
+
+if "fluency" in config["metrics"]:
+    fluency_result = fluency(outputs, eval_model=eval_client)
+    threshold = config["thresholds"].get("fluency", 0.5)
+    assert fluency_result >= threshold
+
+if "toxicity" in config["metrics"]:
+    toxicity_result = toxicity(outputs, eval_model=eval_client)
+    threshold = config["thresholds"].get("toxicity", 0.5)
+    assert toxicity_result < threshold
+```
+
+#### Handling Errors
+
+```python
+from langcheck.utils import load_json
+import json
+from pathlib import Path
+
+def safe_load_json(filepath, default=None):
+    """Safely load JSON with error handling."""
+    try:
+        return load_json(filepath)
+    except FileNotFoundError:
+        print(f"File not found: {filepath}")
+        return default
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON in {filepath}: {e}")
+        return default
+    except Exception as e:
+        print(f"Error loading {filepath}: {e}")
+        return default
+
+# Use the safe wrapper
+test_data = safe_load_json("data/tests.json", default=[])
+if test_data:
+    # Process test data
+    pass
+else:
+    print("Using default test data")
+    test_data = {"prompts": ["default prompt"], "outputs": ["default output"]}
+```
+
+## Common Patterns
+
+### Batch Evaluation from Files
+
+```python
+from langcheck.utils import load_json
+from langcheck.metrics import fluency, toxicity, answer_relevance
+import glob
+
+# Load all test files
+test_files = glob.glob("tests/**/*.json", recursive=True)
+
+for test_file in test_files:
+    print(f"Evaluating {test_file}...")
+    
+    test_data = load_json(test_file)
+    
+    # Run evaluations
+    fluency_result = fluency(test_data["outputs"])
+    toxicity_result = toxicity(test_data["outputs"])
+    
+    # Check thresholds
+    if not (fluency_result >= 0.7).all():
+        print(f"  FAIL: Fluency below threshold")
+    if not (toxicity_result < 0.3).all():
+        print(f"  FAIL: Toxicity above threshold")
+    
+    print(f"  Pass rate: {(fluency_result >= 0.7).pass_rate:.1%}")
+```
+
+### Reference Data Loading
+
+```python
+from langcheck.utils import load_json
+from langcheck.metrics import semantic_similarity, rouge1, rouge2, rougeL
+
+# Load reference outputs
+references = load_json("data/reference_outputs.json")
+# Format: {"prompt_123": "reference output", ...}
+
+# Generate outputs
+generated = model.generate(list(references.keys()))
+
+# Compare with references
+reference_list = list(references.values())
+
+sim_result = semantic_similarity(generated, reference_list)
+r1_result = rouge1(generated, reference_list)
+r2_result = rouge2(generated, reference_list)
+rl_result = rougeL(generated, reference_list)
+
+print(f"Semantic Similarity: {sum(sim_result.metric_values) / len(sim_result.metric_values):.3f}")
+print(f"ROUGE-1: {sum(r1_result.metric_values) / len(r1_result.metric_values):.3f}")
+print(f"ROUGE-2: {sum(r2_result.metric_values) / len(r2_result.metric_values):.3f}")
+print(f"ROUGE-L: {sum(rl_result.metric_values) / len(rl_result.metric_values):.3f}")
+```
+
+### Evaluation Report Generation
+
+```python
+from langcheck.utils import load_json
+from langcheck.metrics import fluency, toxicity, sentiment
+import json
+
+# Load test data
+test_data = load_json("data/model_outputs.json")
+
+# Run evaluations
+fluency_result = fluency(test_data["outputs"])
+toxicity_result = toxicity(test_data["outputs"])
+sentiment_result = sentiment(test_data["outputs"])
+
+# Create report
+report = {
+    "model": test_data["model_name"],
+    "timestamp": test_data["timestamp"],
+    "num_outputs": len(test_data["outputs"]),
+    "metrics": {
+        "fluency": {
+            "mean": sum(fluency_result.metric_values) / len(fluency_result.metric_values),
+            "pass_rate": (fluency_result >= 0.7).pass_rate
+        },
+        "toxicity": {
+            "mean": sum(toxicity_result.metric_values) / len(toxicity_result.metric_values),
+            "pass_rate": (toxicity_result < 0.3).pass_rate
+        },
+        "sentiment": {
+            "mean": sum(sentiment_result.metric_values) / len(sentiment_result.metric_values)
+        }
+    }
+}
+
+# Save report
+with open("reports/evaluation_report.json", "w") as f:
+    json.dump(report, f, indent=2)
+```
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Use metrics with loaded data
+- [English Metrics](/api/metrics/english) - Evaluate loaded outputs

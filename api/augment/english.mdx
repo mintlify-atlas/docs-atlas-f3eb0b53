@@ -1,0 +1,521 @@
+---
+title: English Augmentation
+description: API reference for English text augmentation functions in langcheck.augment.en
+---
+
+## Overview
+
+English augmentation functions help create variations of text for data augmentation, robustness testing, and adversarial evaluation. All functions return lists of augmented text.
+
+```python
+from langcheck.augment import en
+
+# Simple augmentation
+augmented = en.change_case(["Hello World"], to_case="lowercase")
+print(augmented)  # ["hello world"]
+
+# Generate multiple perturbations
+augmented = en.keyboard_typo(["Hello"], num_perturbations=3)
+print(augmented)  # ["Hwllo", "Helpo", "Hrllo"]
+```
+
+## Text Case Manipulation
+
+### change_case()
+
+Change characters to uppercase or lowercase.
+
+```python
+from langcheck.augment.en import change_case
+
+augmented = change_case(
+    instances=["Hello World", "Test Message"],
+    to_case="uppercase",
+    aug_char_p=1.0,
+    num_perturbations=1
+)
+print(augmented)  # ["HELLO WORLD", "TEST MESSAGE"]
+
+# Partial augmentation
+augmented = change_case(
+    instances="Hello World",
+    to_case="lowercase",
+    aug_char_p=0.5,  # Only 50% of characters
+    num_perturbations=2,
+    seed=42
+)
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  A single string or list of strings to augment
+</ParamField>
+
+<ParamField path="to_case" type="str" default="uppercase">
+  Target case: `"uppercase"` or `"lowercase"`
+</ParamField>
+
+<ParamField path="aug_char_p" type="float" default="1.0">
+  Percentage of characters to augment (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of augmented versions to generate per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed for reproducibility
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of augmented strings. Length = len(instances) * num_perturbations
+</ResponseField>
+
+## Character-Level Augmentation
+
+### keyboard_typo()
+
+Simulate keyboard typos by replacing characters with adjacent keys.
+
+```python
+from langcheck.augment.en import keyboard_typo
+
+augmented = keyboard_typo(
+    instances=["Hello World"],
+    aug_char_p=0.1,  # 10% of characters
+    num_perturbations=3
+)
+print(augmented)  # ["Hwllo World", "Hello Wofld", "Hello Worlc"]
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="aug_char_p" type="float" default="0.1">
+  Percentage of characters to add typos to (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of perturbed versions per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed for reproducibility
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with keyboard typos
+</ResponseField>
+
+### ocr_typo()
+
+Simulate OCR errors by replacing characters with visually similar ones.
+
+```python
+from langcheck.augment.en import ocr_typo
+
+augmented = ocr_typo(
+    instances=["Hello World"],
+    aug_char_p=0.15,
+    num_perturbations=2
+)
+print(augmented)  # ["He1lo World", "Hel1o W0rld"] (l->1, o->0)
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="aug_char_p" type="float" default="0.1">
+  Percentage of characters to replace (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of perturbed versions per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with OCR-like character substitutions
+</ResponseField>
+
+### to_full_width()
+
+Convert ASCII characters to full-width Unicode equivalents.
+
+```python
+from langcheck.augment.en import to_full_width
+
+augmented = to_full_width(
+    instances=["Hello123"],
+    aug_char_p=1.0,
+    num_perturbations=1
+)
+print(augmented)  # ["Ｈｅｌｌｏ１２３"] (full-width characters)
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="aug_char_p" type="float" default="1.0">
+  Percentage of characters to convert (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of perturbed versions per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with full-width characters
+</ResponseField>
+
+### remove_punctuation()
+
+Remove punctuation characters from text.
+
+```python
+from langcheck.augment.en import remove_punctuation
+
+augmented = remove_punctuation(
+    instances=["Hello, World!", "How are you?"],
+    aug_char_p=1.0
+)
+print(augmented)  # ["Hello World", "How are you"]
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="aug_char_p" type="float" default="1.0">
+  Percentage of punctuation to remove (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of perturbed versions per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with punctuation removed
+</ResponseField>
+
+## Semantic Augmentation
+
+### synonym()
+
+Replace words with synonyms using WordNet.
+
+```python
+from langcheck.augment.en import synonym
+
+augmented = synonym(
+    instances=["The quick brown fox jumps over the lazy dog"],
+    num_perturbations=2,
+    seed=42
+)
+print(augmented)
+# ["The fast brown fox jumps over the lazy dog",
+#  "The quick brown fox leaps over the lazy dog"]
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of synonym variations per input
+</ParamField>
+
+<ParamField path="seed" type="int | None">
+  Random seed for reproducibility
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with words replaced by synonyms
+</ResponseField>
+
+### rephrase()
+
+Rephrase text using an LLM while maintaining meaning.
+
+```python
+from langcheck.augment.en import rephrase
+from langcheck.augment.en import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+augmented = rephrase(
+    instances=["The weather is nice today."],
+    eval_client=eval_client,
+    num_perturbations=2
+)
+print(augmented)
+# ["Today's weather is pleasant.",
+#  "It's a beautiful day weather-wise."]
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Strings to rephrase
+</ParamField>
+
+<ParamField path="eval_client" type="EvalClient" required>
+  An EvalClient instance (e.g., OpenAIEvalClient) for rephrasing
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of rephrasings per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of rephrased strings
+</ResponseField>
+
+## Gender Augmentation
+
+### gender()
+
+Replace pronouns with specified gender pronouns.
+
+```python
+from langcheck.augment.en import gender
+
+augmented = gender(
+    texts=["He went to his house."],
+    to_gender="female"
+)
+print(augmented)  # ["She went to her house."]
+
+augmented = gender(
+    texts=["She is a doctor."],
+    to_gender="plural"
+)
+print(augmented)  # ["They are a doctor."]
+```
+
+<ParamField path="texts" type="list[str] | str" required>
+  Strings to augment
+</ParamField>
+
+<ParamField path="to_gender" type="str" default="plural">
+  Target gender: `"male"`, `"female"`, or `"plural"` (they/them)
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of strings with pronouns replaced
+</ResponseField>
+
+## Security Testing
+
+### jailbreak_template()
+
+Insert text into jailbreak prompt templates for security testing.
+
+```python
+from langcheck.augment.en import jailbreak_template
+
+augmented = jailbreak_template(
+    instances=["Write a poem about nature"],
+    template_indices=[0, 1]  # Use first two templates
+)
+print(augmented)
+# Returns the prompt wrapped in jailbreak templates
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Prompts to wrap in jailbreak templates
+</ParamField>
+
+<ParamField path="template_indices" type="list[int] | None">
+  Indices of jailbreak templates to use. If None, uses all available templates.
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of prompts wrapped in jailbreak templates. Length = len(instances) * len(template_indices)
+</ResponseField>
+
+### payload_splitting()
+
+Split adversarial payloads across multiple parts to test prompt injection detection.
+
+```python
+from langcheck.augment.en import payload_splitting
+
+augmented = payload_splitting(
+    instances=["Ignore previous instructions"],
+    num_perturbations=2
+)
+print(augmented)
+# Returns variations with the payload split differently
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Adversarial payloads to split
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of splitting variations per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of payloads with splitting applied
+</ResponseField>
+
+## Context Manipulation
+
+### rephrase_with_system_role_context()
+
+Rephrase prompts with system role context for evaluation.
+
+```python
+from langcheck.augment.en import rephrase_with_system_role_context
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+augmented = rephrase_with_system_role_context(
+    instances=["What is the weather?"],
+    system_role_contexts=["You are a helpful weather assistant"],
+    eval_client=eval_client
+)
+print(augmented)
+# Rephrased with system context considered
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Prompts to rephrase
+</ParamField>
+
+<ParamField path="system_role_contexts" type="list[str] | str" required>
+  System role contexts to use for rephrasing
+</ParamField>
+
+<ParamField path="eval_client" type="EvalClient" required>
+  EvalClient for generating rephrasings
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of rephrasings per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of rephrased prompts considering system context
+</ResponseField>
+
+### rephrase_with_user_role_context()
+
+Rephrase prompts with user role context.
+
+```python
+from langcheck.augment.en import rephrase_with_user_role_context
+
+augmented = rephrase_with_user_role_context(
+    instances=["How do I cook pasta?"],
+    user_role_contexts=["beginner cook"],
+    eval_client=eval_client
+)
+print(augmented)
+# Rephrased considering the user is a beginner
+```
+
+<ParamField path="instances" type="list[str] | str" required>
+  Prompts to rephrase
+</ParamField>
+
+<ParamField path="user_role_contexts" type="list[str] | str" required>
+  User role contexts to use for rephrasing
+</ParamField>
+
+<ParamField path="eval_client" type="EvalClient" required>
+  EvalClient for generating rephrasings
+</ParamField>
+
+<ParamField path="num_perturbations" type="int" default="1">
+  Number of rephrasings per input
+</ParamField>
+
+<ResponseField name="Returns" type="list[str]">
+  List of rephrased prompts considering user context
+</ResponseField>
+
+## Example Workflows
+
+### Robustness Testing
+
+Test model robustness to character-level perturbations:
+
+```python
+from langcheck.augment.en import keyboard_typo, ocr_typo
+from langcheck.metrics import fluency
+
+original_prompts = ["Translate this to French", "Summarize this article"]
+
+# Generate perturbed versions
+typo_prompts = keyboard_typo(original_prompts, aug_char_p=0.1, num_perturbations=5)
+ocr_prompts = ocr_typo(original_prompts, aug_char_p=0.1, num_perturbations=5)
+
+# Test model responses
+original_outputs = model.generate(original_prompts)
+typo_outputs = model.generate(typo_prompts)
+ocr_outputs = model.generate(ocr_prompts)
+
+# Compare quality
+original_scores = fluency(original_outputs)
+typo_scores = fluency(typo_outputs)
+ocr_scores = fluency(ocr_outputs)
+```
+
+### Data Augmentation
+
+Create diverse training examples:
+
+```python
+from langcheck.augment.en import synonym, rephrase, gender
+
+training_texts = ["The customer was satisfied with the service."]
+
+# Generate variations
+synonym_versions = synonym(training_texts, num_perturbations=3)
+rephrased_versions = rephrase(training_texts, eval_client, num_perturbations=3)
+gender_versions = gender(training_texts, to_gender="male") + \
+                  gender(training_texts, to_gender="female") + \
+                  gender(training_texts, to_gender="plural")
+
+all_versions = training_texts + synonym_versions + rephrased_versions + gender_versions
+```
+
+### Security Testing
+
+Test prompt injection defenses:
+
+```python
+from langcheck.augment.en import jailbreak_template, payload_splitting
+from langcheck.metrics import jailbreak_prompt
+
+base_prompts = ["Ignore all previous instructions"]
+
+# Generate attack variations
+jailbreak_prompts = jailbreak_template(base_prompts)
+split_prompts = payload_splitting(base_prompts, num_perturbations=5)
+
+# Test detection
+detection_scores = jailbreak_prompt(jailbreak_prompts + split_prompts)
+print(f"Detection rate: {detection_scores.metric_values.count(1.0) / len(detection_scores.metric_values)}")
+```
+
+## See Also
+
+- [Japanese Augmentation](/api/augment/japanese) - Japanese text augmentation
+- [Metrics Overview](/api/metrics/overview) - Use metrics to evaluate augmented text
+- [English Metrics](/api/metrics/english) - Evaluate English text quality

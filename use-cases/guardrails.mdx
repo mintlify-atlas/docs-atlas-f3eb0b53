@@ -1,0 +1,249 @@
+---
+title: Guardrails
+description: Filter LLM outputs before showing them to users with LangCheck metrics
+---
+
+You can implement guardrails on LLM outputs with LangCheck metrics. Guardrails allow you to filter or modify outputs before they reach users, ensuring quality and safety.
+
+## Quick Example
+
+Simply filter candidate outputs through LangCheck metrics:
+
+```python
+import langcheck
+
+# Get a candidate output from the LLM app
+raw_output = my_llm_app(random_user_prompt)
+
+# Filter the output before it reaches the user
+while langcheck.metrics.contains_any_strings(raw_output, blacklist_words).any():
+    raw_output = my_llm_app(random_user_prompt)
+```
+
+## Blocking Toxic Content
+
+Use toxicity metrics to prevent harmful content from reaching users:
+
+```python
+import langcheck
+
+def generate_safe_output(user_prompt, max_retries=3):
+    """Generate output with toxicity guardrail."""
+    for attempt in range(max_retries):
+        output = my_llm_app(user_prompt)
+        
+        # Check toxicity score
+        toxicity_score = langcheck.metrics.toxicity(output)
+        
+        if toxicity_score < 0.5:
+            return output
+    
+    # If all retries fail, return a safe default
+    return "I apologize, but I cannot provide a response to that request."
+```
+
+## Detecting Hallucinations
+
+For RAG applications, fact-check outputs against retrieved context:
+
+```python
+import langcheck
+
+# Get a candidate output and retrieved context from the RAG app
+raw_output, context = my_rag_app(random_user_prompt)
+
+# Fact check the output against the context before it reaches the user
+if langcheck.metrics.factual_consistency(raw_output, context) < 0.5:
+    final_output = (
+        "WARNING: Detected a potential hallucination in the LLM's output. " +
+        "Please fact-check the output below!\n" +
+        raw_output
+    )
+else:
+    final_output = raw_output
+```
+
+## Validating Output Structure
+
+Ensure outputs match expected formats before returning them:
+
+```python
+import langcheck
+import json
+
+def generate_json_output(user_prompt, required_keys, max_retries=3):
+    """Generate valid JSON output with required keys."""
+    for attempt in range(max_retries):
+        output = my_llm_app(user_prompt)
+        
+        # Check if output is valid JSON
+        is_valid = langcheck.metrics.is_json_object(output)
+        
+        if is_valid.all():
+            # Verify required keys exist
+            try:
+                parsed = json.loads(output)
+                if all(key in parsed for key in required_keys):
+                    return output
+            except json.JSONDecodeError:
+                continue
+    
+    # Return empty JSON if all retries fail
+    return "{}"
+```
+
+## Filtering with Custom Validation
+
+Use custom validation functions to implement specific business logic:
+
+```python
+import langcheck
+import json
+
+def has_required_fields(output_text):
+    """Check if JSON output has required fields."""
+    try:
+        data = json.loads(output_text)
+        return 'myKey' in data
+    except json.JSONDecodeError:
+        return False
+
+# Generate output
+generated_outputs = [my_llm_app(prompt) for prompt in prompts]
+
+# Apply custom validation as guardrail
+validation_results = langcheck.metrics.validation_fn(
+    generated_outputs, 
+    has_required_fields
+)
+
+# Filter out invalid outputs
+valid_outputs = [
+    output for output, is_valid in zip(generated_outputs, validation_results)
+    if is_valid
+]
+```
+
+## Checking Answer Relevance
+
+Ensure outputs are relevant to the user's query:
+
+```python
+import langcheck
+
+def generate_relevant_output(user_prompt, min_relevance=0.7, max_retries=3):
+    """Generate output with relevance guardrail."""
+    for attempt in range(max_retries):
+        output = my_llm_app(user_prompt)
+        
+        # Check answer relevance
+        relevance = langcheck.metrics.answer_relevance(output, user_prompt)
+        
+        if relevance > min_relevance:
+            return output
+    
+    return "I'm not sure how to answer that question. Could you rephrase it?"
+```
+
+## Multi-Layer Guardrails
+
+Combine multiple guardrails for comprehensive filtering:
+
+```python
+import langcheck
+
+def generate_safe_and_relevant_output(user_prompt, context=None):
+    """Generate output with multiple guardrails."""
+    max_retries = 3
+    
+    for attempt in range(max_retries):
+        output = my_llm_app(user_prompt)
+        
+        # Layer 1: Check toxicity
+        if langcheck.metrics.toxicity(output) >= 0.5:
+            continue
+        
+        # Layer 2: Check relevance
+        if langcheck.metrics.answer_relevance(output, user_prompt) < 0.7:
+            continue
+        
+        # Layer 3: Check factual consistency (if context provided)
+        if context and langcheck.metrics.factual_consistency(output, context) < 0.5:
+            continue
+        
+        # Layer 4: Check fluency
+        if langcheck.metrics.fluency(output) < 0.8:
+            continue
+        
+        # All guardrails passed
+        return output
+    
+    # If all retries fail, return safe default
+    return "I apologize, but I cannot provide a suitable response at this time."
+```
+
+## Conditional Warnings
+
+Add warnings instead of blocking when outputs are borderline:
+
+```python
+import langcheck
+
+def generate_output_with_warnings(user_prompt, context):
+    """Generate output with conditional warnings."""
+    output = my_llm_app(user_prompt)
+    warnings = []
+    
+    # Check toxicity
+    toxicity = langcheck.metrics.toxicity(output)
+    if toxicity > 0.7:
+        return None  # Block completely
+    elif toxicity > 0.4:
+        warnings.append("This response may contain mildly inappropriate content.")
+    
+    # Check factual consistency
+    consistency = langcheck.metrics.factual_consistency(output, context)
+    if consistency < 0.3:
+        return None  # Block completely
+    elif consistency < 0.6:
+        warnings.append("This response may not be fully accurate. Please verify.")
+    
+    # Return output with warnings if any
+    if warnings:
+        warning_text = "\n".join([f"⚠️ {w}" for w in warnings])
+        return f"{warning_text}\n\n{output}"
+    
+    return output
+```
+
+## Blacklist Filtering
+
+Filter outputs containing specific blacklisted terms:
+
+```python
+import langcheck
+
+blacklist_words = ['forbidden_term1', 'forbidden_term2', 'forbidden_term3']
+
+def generate_filtered_output(user_prompt, max_retries=3):
+    """Generate output without blacklisted terms."""
+    for attempt in range(max_retries):
+        output = my_llm_app(user_prompt)
+        
+        # Check for blacklisted strings
+        if not langcheck.metrics.contains_any_strings(output, blacklist_words).any():
+            return output
+    
+    return "I cannot provide a response that meets the content guidelines."
+```
+
+## Best Practices
+
+1. **Set appropriate thresholds**: Balance safety with usability - too strict guardrails may reject valid outputs
+2. **Use multiple retries**: Give the LLM multiple chances to generate acceptable output
+3. **Provide fallback responses**: Always have a safe default response when guardrails fail
+4. **Log filtered outputs**: Track what's being blocked to improve your system
+5. **Combine multiple metrics**: Use layered guardrails for comprehensive filtering
+6. **Test edge cases**: Ensure guardrails work correctly on boundary cases
+7. **Monitor performance**: Track how often guardrails trigger to optimize thresholds
+8. **Consider latency**: Multiple retries increase response time - optimize for your use case

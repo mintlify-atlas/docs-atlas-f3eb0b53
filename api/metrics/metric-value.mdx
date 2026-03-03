@@ -1,0 +1,325 @@
+---
+title: MetricValue
+description: The MetricValue class and its methods for working with evaluation results
+---
+
+## Overview
+
+The `MetricValue` class is the return type of all LangCheck metric functions. It provides a rich interface for working with evaluation results, including scores, explanations, thresholds, and visualizations.
+
+## Class Definition
+
+```python
+from langcheck.metrics import MetricValue
+
+class MetricValue:
+    metric_name: str
+    metric_values: list[float | int | None]
+    metric_inputs: MetricInputs
+    explanations: list[str | None] | None
+    language: str | None
+    token_usage: MetricTokenUsage | None
+```
+
+## Attributes
+
+<ResponseField name="metric_name" type="str">
+  The name of the metric (e.g., "fluency", "toxicity")
+</ResponseField>
+
+<ResponseField name="metric_values" type="list[float | int | None]">
+  List of metric scores, one for each evaluated input. Values are typically floats between 0 and 1, or integers (0/1) for binary metrics. May contain `None` if a score couldn't be computed.
+</ResponseField>
+
+<ResponseField name="metric_inputs" type="MetricInputs">
+  Object containing the inputs that were evaluated (generated_outputs, prompts, sources, reference_outputs, etc.)
+</ResponseField>
+
+<ResponseField name="explanations" type="list[str | None] | None">
+  Optional list of explanations for each score, typically provided by LLM-based evaluators
+</ResponseField>
+
+<ResponseField name="language" type="str | None">
+  The language of evaluation (e.g., "en", "ja", "de", "zh")
+</ResponseField>
+
+<ResponseField name="token_usage" type="MetricTokenUsage | None">
+  Token usage information for LLM-based evaluations (input tokens, output tokens, total tokens)
+</ResponseField>
+
+## Methods
+
+### to_df()
+
+Convert the metric results to a pandas DataFrame.
+
+```python
+from langcheck.metrics import fluency
+
+result = fluency(["Good text.", "Bad txt"])
+df = result.to_df()
+print(df)
+#   generated_outputs  explanations  metric_values
+# 0        Good text.          None           0.95
+# 1           Bad txt          None           0.42
+```
+
+<ResponseField name="Returns" type="pd.DataFrame">
+  DataFrame with columns for inputs (generated_outputs, prompts, etc.), explanations, and metric_values
+</ResponseField>
+
+### scatter()
+
+Display an interactive scatter plot of the metric values. Best used in Jupyter notebooks.
+
+```python
+from langcheck.metrics import toxicity
+
+result = toxicity(["Nice message", "Rude comment", "Normal text"])
+result.scatter()  # Opens interactive plot
+
+# For Google Colab
+result.scatter(jupyter_mode="external")
+```
+
+<ParamField path="jupyter_mode" type="str" default="inline">
+  Display mode for Jupyter notebooks:
+  - `"inline"`: Display in cell output (default)
+  - `"external"`: Open in external window (use for Google Colab)
+</ParamField>
+
+### histogram()
+
+Display an interactive histogram of the metric values. Best used in Jupyter notebooks.
+
+```python
+from langcheck.metrics import sentiment
+
+result = sentiment(list_of_texts)
+result.histogram()  # Opens interactive histogram
+
+# For Google Colab  
+result.histogram(jupyter_mode="external")
+```
+
+<ParamField path="jupyter_mode" type="str" default="inline">
+  Display mode for Jupyter notebooks (same as scatter)
+</ParamField>
+
+### all()
+
+Check if all metric values pass (useful for binary metrics).
+
+```python
+from langcheck.metrics import is_json_object
+
+result = is_json_object(['{"valid": true}', '{"also": "valid"}'])
+if result.all():
+    print("All outputs are valid JSON!")
+```
+
+<ResponseField name="Returns" type="bool">
+  True if all metric values are truthy, False otherwise
+</ResponseField>
+
+### any()
+
+Check if any metric value passes (useful for binary metrics).
+
+```python
+from langcheck.metrics import contains_regex
+
+result = contains_regex(["abc", "def", "a1b"], r"\d")
+if result.any():
+    print("At least one output contains a digit")
+```
+
+<ResponseField name="Returns" type="bool">
+  True if any metric value is truthy, False otherwise
+</ResponseField>
+
+## Threshold Comparisons
+
+You can compare MetricValue objects with thresholds using comparison operators. This returns a `MetricValueWithThreshold` object.
+
+```python
+from langcheck.metrics import fluency
+
+result = fluency(["Good sentence.", "Bad txt", "Another good one."])
+
+# Create threshold comparison
+threshold_result = result > 0.5
+
+print(threshold_result.pass_rate)  # 0.667 (2 out of 3 passed)
+print(threshold_result.threshold_results)  # [True, False, True]
+
+# Use in assertions
+assert result > 0.5  # Raises AssertionError if not all pass
+assert (result > 0.5).all()  # Explicit form
+
+# Check if any pass
+if (result > 0.5).any():
+    print("At least one output is fluent")
+```
+
+Supported operators: `<`, `<=`, `>`, `>=`, `==`, `!=`
+
+## MetricValueWithThreshold
+
+When you compare a MetricValue with a threshold, you get a `MetricValueWithThreshold` object with additional attributes:
+
+<ResponseField name="threshold" type="float | int">
+  The threshold value used for comparison
+</ResponseField>
+
+<ResponseField name="threshold_op" type="str">
+  The comparison operator used (`<`, `<=`, `>`, `>=`, `==`, `!=`)
+</ResponseField>
+
+<ResponseField name="threshold_results" type="list[bool]">
+  Boolean list indicating which values passed the threshold
+</ResponseField>
+
+<ResponseField name="pass_rate" type="float">
+  Proportion of values that passed the threshold (0.0 to 1.0)
+</ResponseField>
+
+```python
+from langcheck.metrics import toxicity
+
+result = toxicity(outputs)
+threshold_result = result < 0.3  # Low toxicity threshold
+
+print(f"Pass rate: {threshold_result.pass_rate:.1%}")  # "Pass rate: 85.0%"
+print(f"Failed indices: {[i for i, passed in enumerate(threshold_result.threshold_results) if not passed]}")
+
+# Display as DataFrame
+df = threshold_result.to_df()
+print(df)
+#   generated_outputs  ...  metric_values  threshold_test  threshold_result
+# 0      Nice message  ...           0.05           < 0.3              True
+# 1     Toxic content  ...           0.85           < 0.3             False
+# 2       Normal text  ...           0.12           < 0.3              True
+```
+
+## Accessing Input Data
+
+You can access the original inputs through the `MetricValue` object:
+
+```python
+from langcheck.metrics import answer_relevance
+
+result = answer_relevance(
+    generated_outputs=["Paris is the capital."],
+    prompts=["What is the capital of France?"]
+)
+
+# Access inputs
+print(result.generated_outputs)  # ["Paris is the capital."]
+print(result.prompts)  # ["What is the capital of France?"]
+```
+
+Available input attributes (depending on metric):
+- `generated_outputs`
+- `prompts`
+- `reference_outputs`
+- `sources`
+
+## String Representation
+
+MetricValue objects have helpful string representations:
+
+```python
+result = fluency(["Good text", "Bad txt"])
+print(result)
+# Metric: fluency
+#   generated_outputs  explanations  metric_values
+# 0        Good text          None           0.95
+# 1           Bad txt          None           0.42
+
+# In Jupyter notebooks, displays as HTML table
+result  # Renders as nicely formatted HTML table
+```
+
+## Example Workflows
+
+### Basic Evaluation
+
+```python
+from langcheck.metrics import fluency, toxicity
+
+outputs = ["Well written text.", "Poorly wrttn txt."]
+
+# Evaluate
+fluency_scores = fluency(outputs)
+toxicity_scores = toxicity(outputs)
+
+# Check results
+print(f"Fluency: {fluency_scores.metric_values}")
+print(f"Toxicity: {toxicity_scores.metric_values}")
+```
+
+### Evaluation with Thresholds
+
+```python
+from langcheck.metrics import answer_relevance
+
+result = answer_relevance(
+    generated_outputs=model_outputs,
+    prompts=user_questions
+)
+
+# Filter outputs that meet quality threshold
+threshold_result = result >= 0.7
+passing_outputs = [
+    output for output, passed in 
+    zip(result.generated_outputs, threshold_result.threshold_results)
+    if passed
+]
+
+print(f"Pass rate: {threshold_result.pass_rate:.1%}")
+print(f"Passing outputs: {passing_outputs}")
+```
+
+### Comparing Two Metrics
+
+```python
+from langcheck.metrics import fluency, toxicity
+
+outputs = generate_batch_outputs()
+
+fluency_result = fluency(outputs)
+toxicity_result = toxicity(outputs)
+
+# Find outputs with high fluency and low toxicity
+high_quality = [
+    output
+    for output, fluency_score, toxicity_score in 
+    zip(outputs, fluency_result.metric_values, toxicity_result.metric_values)
+    if fluency_score > 0.8 and toxicity_score < 0.2
+]
+
+print(f"High quality outputs: {len(high_quality)}/{len(outputs)}")
+```
+
+### Visualization in Notebooks
+
+```python
+from langcheck.metrics import semantic_similarity, fluency
+
+outputs = [...]
+references = [...]
+
+sim_result = semantic_similarity(outputs, references)
+flu_result = fluency(outputs)
+
+# Show interactive visualizations
+sim_result.scatter()  # Single metric scatter plot
+flu_result.histogram()  # Histogram of scores
+```
+
+## See Also
+
+- [Metrics Overview](/api/metrics/overview) - Overview of available metrics
+- [Custom Metrics](/api/metrics/custom) - Create custom evaluators
+- [Visualization API](/api/plot) - Plotting functions

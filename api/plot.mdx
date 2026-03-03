@@ -1,0 +1,435 @@
+---
+title: Visualization
+description: API reference for plotting functions - scatter() and histogram()
+---
+
+## Overview
+
+LangCheck provides interactive visualization functions for exploring metric results in Jupyter notebooks. These functions create Dash-based interactive plots that allow filtering and exploration of evaluation data.
+
+```python
+from langcheck.plot import scatter, histogram
+from langcheck.metrics import fluency, toxicity
+
+# Evaluate some outputs
+fluency_result = fluency(outputs)
+toxicity_result = toxicity(outputs)
+
+# Create interactive visualizations
+scatter(fluency_result)  # Single metric scatter plot
+scatter(fluency_result, toxicity_result)  # Two-metric scatter plot
+histogram(fluency_result)  # Histogram of scores
+```
+
+<Note>
+  These functions are designed for Jupyter notebooks and require a compatible display environment. They will open interactive Dash applications.
+</Note>
+
+## scatter()
+
+Display an interactive scatter plot of metric values.
+
+### Single Metric Scatter Plot
+
+Plot one metric with data points on an index vs. score axis:
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import fluency
+
+result = fluency([
+    "This is well written.",
+    "Bad txt here",
+    "Another good sentence."
+])
+
+# Show interactive scatter plot
+scatter(result)
+
+# For Google Colab
+scatter(result, jupyter_mode="external")
+```
+
+The plot includes:
+- Interactive filtering by generated_outputs, reference_outputs, prompts, and sources
+- Hover tooltips showing full text and scores
+- Threshold lines (if using MetricValueWithThreshold)
+- Zoom and pan capabilities
+
+### Two Metric Scatter Plot
+
+Plot two metrics against each other:
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import fluency, toxicity
+
+outputs = [
+    "Great product!",
+    "This is terrible garbage.",
+    "Works as expected."
+]
+
+fluency_result = fluency(outputs)
+toxicity_result = toxicity(outputs)
+
+# Plot fluency vs toxicity
+scatter(fluency_result, toxicity_result)
+```
+
+This creates a scatter plot with:
+- X-axis: First metric values
+- Y-axis: Second metric values  
+- Interactive filtering
+- Threshold lines for both metrics (if applicable)
+
+### Function Signature
+
+```python
+def scatter(
+    metric_value: MetricValue,
+    other_metric_value: MetricValue | None = None,
+    jupyter_mode: str = "inline"
+) -> None
+```
+
+### Parameters
+
+<ParamField path="metric_value" type="MetricValue" required>
+  The primary MetricValue object to plot. For single-metric plots, this is the only metric. For two-metric plots, this is the x-axis metric.
+</ParamField>
+
+<ParamField path="other_metric_value" type="MetricValue | None">
+  Optional second MetricValue to plot. When provided, creates a two-metric scatter plot with this as the y-axis metric.
+</ParamField>
+
+<ParamField path="jupyter_mode" type="str" default="inline">
+  Display mode for Jupyter notebooks:
+  - `"inline"`: Display the plot inline in cell output (default, works for most Jupyter environments)
+  - `"external"`: Open in an external window (required for Google Colab)
+  
+  See [Dash documentation](https://dash.plotly.com/workspaces/using-dash-in-jupyter-and-workspaces#display-modes) for more details.
+</ParamField>
+
+### Interactive Features
+
+The scatter plot provides several interactive features:
+
+**Filtering**
+- Type in the filter boxes to search generated_outputs, reference_outputs, prompts, or sources
+- Searches are case-insensitive and use substring matching
+- Multiple filters can be active simultaneously
+- Shows "Showing X of Y data points" message
+
+**Hover Information**
+- Hover over any point to see:
+  - Index number
+  - Metric value(s)
+  - Generated output (truncated)
+  - Reference output (if applicable)
+  - Prompt (if applicable)
+  - Source (if applicable)
+  - Explanation (if applicable)
+
+**Zoom and Pan**
+- Click and drag to pan
+- Use toolbar buttons to zoom in/out
+- Double-click to reset view
+- Zoom state persists when filtering
+
+**Threshold Lines**
+- If metric_value is a MetricValueWithThreshold, shows threshold line
+- Line color and position indicate threshold type and value
+
+### Limitations
+
+<Warning>
+  Scatter plots are currently only supported for non-pairwise MetricValues that use the standard inputs: generated_outputs, prompts, reference_outputs, and sources. Pairwise metrics will raise a NotImplementedError.
+</Warning>
+
+### Examples
+
+#### Filter by Generated Outputs
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import sentiment
+
+outputs = [
+    "I love this product!",
+    "This is okay.",
+    "I hate this.",
+    "Amazing quality!"
+]
+
+result = sentiment(outputs)
+scatter(result)
+
+# In the interactive plot:
+# - Type "love" in the generated_outputs filter
+# - Only "I love this product!" will be shown
+# - Type "this" to see multiple matching points
+```
+
+#### Compare Two Metrics
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import fluency, answer_relevance
+from langcheck.metrics.eval_clients import OpenAIEvalClient
+
+eval_client = OpenAIEvalClient()
+
+outputs = [
+    "Paris is the capital of France.",
+    "Paris nice city very good.",
+    "I don't know the answer."
+]
+prompts = [
+    "What is the capital of France?",
+    "What is the capital of France?",
+    "What is the capital of France?"
+]
+
+fluency_scores = fluency(outputs)
+relevance_scores = answer_relevance(outputs, prompts, eval_client=eval_client)
+
+# Plot fluency vs relevance
+scatter(fluency_scores, relevance_scores)
+
+# Points in top-right = high fluency & high relevance (ideal)
+# Points in bottom-right = high fluency but low relevance  
+# Points in top-left = low fluency but high relevance
+# Points in bottom-left = low fluency & low relevance (worst)
+```
+
+#### Using Thresholds
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import toxicity
+
+outputs = [...]
+result = toxicity(outputs)
+
+# Create threshold comparison
+threshold_result = result < 0.3  # Low toxicity threshold
+
+# Plot with threshold line shown
+scatter(threshold_result)
+
+# The plot will show:
+# - Horizontal line at y=0.3
+# - Points colored by pass/fail
+# - Pass rate in the metric info
+```
+
+## histogram()
+
+Display an interactive histogram of metric value distribution.
+
+```python
+from langcheck.plot import histogram
+from langcheck.metrics import fluency
+
+result = fluency(list_of_outputs)
+
+# Show interactive histogram
+histogram(result)
+
+# For Google Colab
+histogram(result, jupyter_mode="external")
+```
+
+The histogram includes:
+- Adjustable number of bins (1-50) via slider
+- Threshold lines (if using MetricValueWithThreshold)
+- Distribution statistics
+
+### Function Signature
+
+```python
+def histogram(
+    metric_value: MetricValue,
+    jupyter_mode: str = "inline"
+) -> None
+```
+
+### Parameters
+
+<ParamField path="metric_value" type="MetricValue" required>
+  The MetricValue object to plot as a histogram
+</ParamField>
+
+<ParamField path="jupyter_mode" type="str" default="inline">
+  Display mode:
+  - `"inline"`: Display inline in cell output (default)
+  - `"external"`: Open in external window (for Google Colab)
+</ParamField>
+
+### Interactive Features
+
+**Adjustable Bins**
+- Slider to adjust number of bins (1-50)
+- Default: 10 bins
+- Bin boundaries automatically calculated based on data range
+- Updates in real-time as slider changes
+
+**Threshold Lines**
+- If metric_value is a MetricValueWithThreshold, shows vertical threshold line
+- Helps visualize how many values pass/fail the threshold
+
+**Zoom and Pan**
+- Click and drag to pan
+- Zoom controls in toolbar
+- Double-click to reset
+
+### Examples
+
+#### Basic Histogram
+
+```python
+from langcheck.plot import histogram
+from langcheck.metrics import sentiment
+
+outputs = [
+    "I love this!",
+    "This is okay.",
+    "Not great.",
+    "Excellent!",
+    "Terrible.",
+    # ... more outputs
+]
+
+result = sentiment(outputs)
+histogram(result)
+
+# Use the slider to adjust bin count
+# - Low bins (e.g., 3): See general distribution (negative/neutral/positive)
+# - High bins (e.g., 30): See fine-grained distribution
+```
+
+#### Histogram with Threshold
+
+```python
+from langcheck.plot import histogram  
+from langcheck.metrics import fluency
+
+result = fluency(outputs)
+threshold_result = result >= 0.7
+
+histogram(threshold_result)
+
+# The plot shows:
+# - Distribution of all fluency scores
+# - Vertical line at x=0.7 (threshold)
+# - Clear visualization of how many points pass/fail
+```
+
+#### Analyzing Score Distribution
+
+```python
+from langcheck.plot import histogram
+from langcheck.metrics import toxicity
+
+# Evaluate a large dataset
+result = toxicity(large_dataset_outputs)
+
+histogram(result)
+
+# Adjust bins to find patterns:
+# - Are most outputs low toxicity (left-skewed)?
+# - Is there a bimodal distribution?
+# - Are there outliers with very high toxicity?
+```
+
+## Using from MetricValue Objects
+
+Both visualization functions are also available as methods on MetricValue objects:
+
+```python
+from langcheck.metrics import fluency, toxicity
+
+fluency_result = fluency(outputs)
+toxicity_result = toxicity(outputs)
+
+# These are equivalent:
+from langcheck.plot import scatter, histogram
+scatter(fluency_result)
+histogram(fluency_result)
+
+# To these:
+fluency_result.scatter()
+fluency_result.histogram()
+
+# Two-metric scatter:
+scatter(fluency_result, toxicity_result)
+# (no method equivalent for two metrics)
+```
+
+See [MetricValue API](/api/metrics/metric-value) for more details.
+
+## Common Workflows
+
+### Exploring Failed Evaluations
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import answer_relevance
+
+result = answer_relevance(outputs, prompts, eval_model=eval_client)
+threshold_result = result >= 0.7
+
+# Use scatter plot to find failures
+scatter(threshold_result)
+
+# In the interactive plot:
+# 1. Visually identify points below the threshold line
+# 2. Hover to see which outputs failed
+# 3. Use filters to search for specific patterns
+# 4. Identify common characteristics of failures
+```
+
+### Comparing Model Versions
+
+```python
+from langcheck.plot import scatter, histogram
+from langcheck.metrics import fluency
+
+outputs_v1 = model_v1.generate(prompts)
+outputs_v2 = model_v2.generate(prompts)
+
+fluency_v1 = fluency(outputs_v1)
+fluency_v2 = fluency(outputs_v2)
+
+# Compare distributions
+histogram(fluency_v1)  # V1 distribution
+histogram(fluency_v2)  # V2 distribution
+
+# Compare head-to-head
+scatter(fluency_v1, fluency_v2)
+# Points above diagonal: V2 is better
+# Points below diagonal: V1 is better
+```
+
+### Quality vs Safety Analysis
+
+```python
+from langcheck.plot import scatter
+from langcheck.metrics import fluency, toxicity
+
+fluency_scores = fluency(outputs)
+toxicity_scores = toxicity(outputs)
+
+# Find high-quality, safe outputs (high fluency, low toxicity)
+scatter(fluency_scores, 1.0 - toxicity_scores)  # Invert toxicity
+
+# Top-right quadrant = high fluency & low toxicity (ideal)
+# Filter to find specific examples in each quadrant
+```
+
+## See Also
+
+- [MetricValue API](/api/metrics/metric-value) - MetricValue class with .scatter() and .histogram() methods
+- [Metrics Overview](/api/metrics/overview) - Overview of available metrics
+- [English Metrics](/api/metrics/english) - English language metrics

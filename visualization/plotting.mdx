@@ -1,0 +1,212 @@
+---
+title: Plotting Functions
+description: Visualize LangCheck metrics with interactive scatter plots and histograms
+---
+
+LangCheck provides built-in visualization functions to help you explore and understand your metric results through interactive plots.
+
+## Scatter Plots
+
+Scatter plots allow you to visualize metric values across your dataset, either for a single metric or comparing two metrics side by side.
+
+### Single Metric Scatter Plot
+
+Visualize a single metric's distribution across all data points:
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+# Calculate a metric
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+
+# Interactive scatter plot of one metric
+fluency_values.scatter()
+```
+
+The scatter plot displays:
+- **X-axis**: Data point index
+- **Y-axis**: Metric value
+- **Hover data**: View generated outputs, prompts, reference outputs, sources, and explanations
+- **Search boxes**: Filter data points by text content
+- **Threshold lines**: Automatically displayed when using comparison operators
+
+### Two Metric Scatter Plot
+
+Compare two metrics by plotting them against each other:
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+# Calculate multiple metrics
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+sentiment_values = langcheck.metrics.sentiment(generated_outputs)
+
+# Interactive scatter plot of two metrics
+langcheck.plot.scatter(fluency_values, sentiment_values)
+```
+
+The two-metric scatter plot displays:
+- **X-axis**: First metric values
+- **Y-axis**: Second metric values  
+- **Hover data**: All associated data for each point
+- **Threshold lines**: Displayed for both metrics if thresholds are set
+
+### Scatter Plot Methods
+
+There are two ways to create scatter plots:
+
+**Method 1: Using the `.scatter()` method on MetricValue objects**
+
+```python
+metric_value = langcheck.metrics.fluency(generated_outputs)
+metric_value.scatter()
+```
+
+**Method 2: Using the `langcheck.plot.scatter()` function**
+
+```python
+# Single metric
+langcheck.plot.scatter(metric_value)
+
+# Two metrics
+langcheck.plot.scatter(metric_value, other_metric_value)
+```
+
+### Display Modes
+
+By default, plots display inline in Jupyter notebooks. For Google Colab, use `jupyter_mode='external'`:
+
+```python
+metric_value.scatter(jupyter_mode='external')
+
+# Or
+langcheck.plot.scatter(metric_value, jupyter_mode='external')
+```
+
+## Histograms
+
+Histograms show the distribution of metric values across your dataset.
+
+```python
+import langcheck
+
+generated_outputs = [
+    'Black cat the',
+    'The black cat is sitting',
+    'The big black cat is sitting on the fence'
+]
+
+fluency_values = langcheck.metrics.fluency(generated_outputs)
+
+# Interactive histogram of a single metric
+fluency_values.histogram()
+```
+
+The histogram displays:
+- **X-axis**: Metric value ranges
+- **Y-axis**: Count of data points in each bin
+- **Bin slider**: Adjust the number of bins (1-50) interactively
+- **Threshold lines**: Automatically displayed when using comparison operators
+
+### Histogram Methods
+
+Like scatter plots, there are two ways to create histograms:
+
+**Method 1: Using the `.histogram()` method on MetricValue objects**
+
+```python
+metric_value = langcheck.metrics.fluency(generated_outputs)
+metric_value.histogram()
+```
+
+**Method 2: Using the `langcheck.plot.histogram()` function**
+
+```python
+langcheck.plot.histogram(metric_value)
+```
+
+### Display Modes
+
+For Google Colab, specify the external mode:
+
+```python
+metric_value.histogram(jupyter_mode='external')
+
+# Or
+langcheck.plot.histogram(metric_value, jupyter_mode='external')
+```
+
+## Interactive Features
+
+All LangCheck plots include interactive features:
+
+- **Hover tooltips**: View detailed information about each data point
+- **Search/filter**: Find specific data points by text content (scatter plots)
+- **Zoom**: Click and drag to zoom into specific regions
+- **Pan**: Drag to move around the plot
+- **Reset**: Double-click to reset the view
+- **Download**: Export plots as PNG images using the camera icon
+
+## API Reference
+
+### langcheck.plot.scatter()
+
+```python
+langcheck.plot.scatter(
+    metric_value: MetricValue,
+    other_metric_value: MetricValue | None = None,
+    jupyter_mode: str = "inline"
+) -> None
+```
+
+**Parameters:**
+- `metric_value`: The MetricValue to plot
+- `other_metric_value`: Optional second MetricValue for two-metric comparison
+- `jupyter_mode`: Display mode - `"inline"` (default) or `"external"` (for Colab)
+
+### langcheck.plot.histogram()
+
+```python
+langcheck.plot.histogram(
+    metric_value: MetricValue,
+    jupyter_mode: str = "inline"
+) -> None
+```
+
+**Parameters:**
+- `metric_value`: The MetricValue to plot
+- `jupyter_mode`: Display mode - `"inline"` (default) or `"external"` (for Colab)
+
+### MetricValue.scatter()
+
+```python
+metric_value.scatter(jupyter_mode: str = "inline") -> None
+```
+
+Convenience method that calls `langcheck.plot.scatter()`.
+
+**Parameters:**
+- `jupyter_mode`: Display mode - `"inline"` (default) or `"external"` (for Colab)
+
+### MetricValue.histogram()
+
+```python
+metric_value.histogram(jupyter_mode: str = "inline") -> None
+```
+
+Convenience method that calls `langcheck.plot.histogram()`.
+
+**Parameters:**
+- `jupyter_mode`: Display mode - `"inline"` (default) or `"external"` (for Colab)
