@@ -1,0 +1,143 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "LangCheck",
+  "projectDescription": "Simple, Pythonic building blocks to evaluate LLM applications.",
+  "theme": "palm",
+  "primaryColor": "#8B5CF6",
+  "lightColor": "#A78BFA",
+  "darkColor": "#7C3AED",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/metrics-overview",
+              "concepts/metric-types",
+              "concepts/evaluation-workflow"
+            ]
+          },
+          {
+            "group": "Metrics",
+            "pages": [
+              "metrics/reference-free",
+              "metrics/reference-based",
+              "metrics/source-based",
+              "metrics/query-based",
+              "metrics/text-structure",
+              "metrics/pairwise",
+              "metrics/custom-metrics",
+              "metrics/eval-clients"
+            ]
+          },
+          {
+            "group": "Augmentation",
+            "pages": [
+              "augmentation/overview",
+              "augmentation/english",
+              "augmentation/japanese"
+            ]
+          },
+          {
+            "group": "Visualization",
+            "pages": [
+              "visualization/plotting",
+              "visualization/analysis"
+            ]
+          },
+          {
+            "group": "Use Cases",
+            "pages": [
+              "use-cases/unit-testing",
+              "use-cases/monitoring",
+              "use-cases/guardrails"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "tutorials",
+              "contributing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Metrics",
+            "pages": [
+              "api/metrics/overview",
+              "api/metrics/english",
+              "api/metrics/japanese",
+              "api/metrics/german",
+              "api/metrics/chinese",
+              "api/metrics/custom",
+              "api/metrics/metric-value"
+            ]
+          },
+          {
+            "group": "Augment",
+            "pages": [
+              "api/augment/english",
+              "api/augment/japanese"
+            ]
+          },
+          {
+            "group": "Visualization",
+            "pages": [
+              "api/plot"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utils",
+              "api/eval-clients"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Reference-free, reference-based, source-based, query-based, and pairwise text quality metrics",
+    "Multi-language support (English, Japanese, German, Chinese)",
+    "Text augmentation for robustness testing (gender, typos, rephrasing)",
+    "Interactive visualizations (scatter plots, histograms)",
+    "Integration with OpenAI, Anthropic, Gemini, and other LLM providers",
+    "Custom metric creation with LLM-based evaluators",
+    "Built-in support for unit testing, monitoring, and guardrails"
+  ],
+  "publicApiSurface": [
+    "langcheck.metrics.fluency()",
+    "langcheck.metrics.toxicity()",
+    "langcheck.metrics.sentiment()",
+    "langcheck.metrics.semantic_similarity()",
+    "langcheck.metrics.factual_consistency()",
+    "langcheck.metrics.answer_relevance()",
+    "langcheck.metrics.is_json_object()",
+    "langcheck.metrics.pairwise_comparison()",
+    "langcheck.metrics.custom_evaluator()",
+    "langcheck.augment.gender()",
+    "langcheck.augment.keyboard_typo()",
+    "langcheck.augment.rephrase()",
+    "langcheck.plot.scatter()",
+    "langcheck.plot.histogram()",
+    "langcheck.metrics.en.*",
+    "langcheck.metrics.ja.*",
+    "langcheck.metrics.de.*",
+    "langcheck.metrics.zh.*"
+  ]
+}
